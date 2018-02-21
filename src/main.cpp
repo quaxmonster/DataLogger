@@ -1,45 +1,21 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
 #include <WiFi101.h>
-#include <RTClib.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Automaton.h>
+#include "Atm_logger.h"
 
 const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
-bool isLogging = false;
-
-class RunningAverage {
-  public:
-    RunningAverage() {
-      this->reset();
-    }
-
-    unsigned int addSample (int Sample) {
-      _total += Sample;
-      return _count++;
-    }
-
-    double average() {
-      return (float)_total / (float)_count;
-    }
-
-    void reset() {
-      _total = 0;
-      _count = 0;
-    }
-  private:
-    unsigned int _total, _count;
-} currentLoopValue;
+const unsigned int cardInterval = 500;
 
 
-RTC_PCF8523 rtc;
+// Init logger
+Atm_logger logger;
 
 
- //Init buttons and actions
+// Init buttons and actions
 Atm_button startBtn;
 Atm_button stopBtn;
 Atm_button infoBtn;
@@ -57,7 +33,7 @@ void cycleInfo( int idx, int v, int up ) {
 
 
 
-//Init display and menus
+// Init display and menus
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 Atm_step menu;
 
@@ -111,7 +87,7 @@ void initDisplay() {
   display.clearDisplay();
   display.setTextWrap(false);
   display.setTextSize(1);
-  display.setTextColor(WHITE);
+  display.setTextColor(WHITE, BLACK);
   display.setCursor(0,0);
 
   display.println("A:Start");
@@ -126,6 +102,8 @@ void initDisplay() {
 
 void setup() {
   analogReadResolution(12);
+
+  logger.begin(currentLoopPin, pumpRelayPin, cardInterval);
 
   startBtn.begin(9)
     .onPress(startLogging);
@@ -144,6 +122,4 @@ void setup() {
 
 void loop() {
   automaton.run();
-
-  if (isLogging) currentLoopValue.addSample(analogRead(currentLoopPin));
 }
