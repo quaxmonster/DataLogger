@@ -4,10 +4,6 @@
 #include <SPI.h>
 #include <SD.h>
 #include <RTClib.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-extern Adafruit_SSD1306 display;
 
 //RTC_PCF8523 rtc;
 
@@ -22,7 +18,7 @@ class RunningAverage {
       return _count++;
     }
 
-    double average() {
+    float average() {
       return (float)_total / (float)_count;
     }
 
@@ -30,24 +26,45 @@ class RunningAverage {
       _total = 0;
       _count = 0;
     }
+
+    //Maybe return this to private eventually, but useful for benchmarking.
+    //Tells how many samples were taken and averaged per recorded value.
+    //Without Automaton framework it was ~1100, with framework it's ~1010.
+    unsigned int _count;
+
   private:
-    unsigned int _total, _count;
+    unsigned int _total;
 };
 
 class Atm_logger: public Machine {
 
  public:
-  enum { STOPPED, STARTED }; // STATES
+  enum { STOPPED, STARTING, STARTED, RECORDING }; // STATES
   enum { EVT_START, EVT_STOP, EVT_TIMER_LOG, ELSE }; // EVENTS
   Atm_logger( void ) : Machine() {};
   Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval);
   Atm_logger& trace( Stream & stream );
   Atm_logger& trigger( int event );
   int state( void );
+  Atm_logger& onRecord( Machine& machine, int event = 0 );
+  Atm_logger& onRecord( atm_cb_push_t callback, int idx = 0 );
+  Atm_logger& onStart( Machine& machine, int event = 0 );
+  Atm_logger& onStart( atm_cb_push_t callback, int idx = 0 );
+  Atm_logger& onStop( Machine& machine, int event = 0 );
+  Atm_logger& onStop( atm_cb_push_t callback, int idx = 0 );
   Atm_logger& start( void );
   Atm_logger& stop( void );
 
+  float lastAnalogValue;
+  bool lastDigitalValue;
+
  private:
+  enum { ENT_STOPPED, ENT_STARTING, EXT_STARTING, LP_STARTED, ENT_RECORDING, EXT_RECORDING }; // ACTIONS
+  enum { ON_RECORD, ON_START, ON_STOP, CONN_MAX }; // CONNECTORS
+  atm_connector connectors[CONN_MAX];
+  int event( int id );
+  void action( int id );
+
   int _analogPin, _digitalPin;
   atm_timer_millis _timer_log;
   RunningAverage _analogValue;
@@ -55,10 +72,6 @@ class Atm_logger: public Machine {
   String _filename;
   File _logFile;
   void getNextLogFile();
-
-  enum { ENT_STOPPED, ENT_STARTED, LP_STARTED }; // ACTIONS
-  int event( int id );
-  void action( int id );
 
 };
 
@@ -70,11 +83,16 @@ Automaton::ATML::begin - Automaton Markup Language
   <machine name="Atm_logger">
     <states>
       <STOPPED index="0" on_enter="ENT_STOPPED">
-        <EVT_START>STARTED</EVT_START>
+        <EVT_START>STARTING</EVT_START>
       </STOPPED>
-      <STARTED index="1" on_enter="ENT_STARTED" on_loop="LP_STARTED">
+      <STARTING index="1" on_enter="ENT_STARTING" on_exit="EXT_STARTING">
+      </STARTING>
+      <STARTED index="2" on_loop="LP_STARTED">
         <EVT_STOP>STOPPED</EVT_STOP>
+        <EVT_TIMER_LOG>RECORDING</EVT_TIMER_LOG>
       </STARTED>
+      <RECORDING index="3" on_enter="ENT_RECORDING" on_exit="EXT_RECORDING">
+      </RECORDING>
     </states>
     <events>
       <EVT_START index="0" access="PUBLIC"/>
@@ -82,6 +100,9 @@ Automaton::ATML::begin - Automaton Markup Language
       <EVT_TIMER_LOG index="2" access="PRIVATE"/>
     </events>
     <connectors>
+      <RECORD autostore="0" broadcast="0" dir="PUSH" slots="1"/>
+      <START autostore="0" broadcast="0" dir="PUSH" slots="1"/>
+      <STOP autostore="0" broadcast="0" dir="PUSH" slots="1"/>
     </connectors>
     <methods>
     </methods>

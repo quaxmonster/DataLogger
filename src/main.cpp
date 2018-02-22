@@ -10,33 +10,21 @@ const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
 const unsigned int cardInterval = 500;
 
+// Init WiFi module
+//TODO built an Automaton machine for the WiFi module.
 
 // Init logger
 Atm_logger logger;
-
-
-// Init buttons and actions
-Atm_button startBtn;
-Atm_button stopBtn;
-Atm_button infoBtn;
-
-void startLogging( int idx, int v, int up ) {
-  Serial.println("Start button pressed.");
-}
-void stopLogging( int idx, int v, int up ) {
-  Serial.println("Stop button pressed.");
-}
-void cycleInfo( int idx, int v, int up ) {
-  Serial.println("Info button pressed.");
-}
-
-
-
 
 // Init display and menus
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 Atm_step menu;
 
+//TODO replace this nasty big switch case with an intelligent menu class that
+//keeps track of info items and which screen/location they're at, and setters
+//for each item. Then any function can just update an item, and the class will
+//decide if it's currently visible and needs to be updated or not, and where
+//on the display to put it.
 void cycleMenu( int idx, int v, int up ) {
   switch(v) {
     case 0:
@@ -99,21 +87,48 @@ void initDisplay() {
 }
 
 
+// Init buttons and actions
+Atm_button startBtn;
+Atm_button stopBtn;
+Atm_button infoBtn;
+
+
 
 void setup() {
   analogReadResolution(12);
 
-  logger.begin(currentLoopPin, pumpRelayPin, cardInterval);
+  logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
+    .onStart([](int idx, int v, int up){
+      display.setCursor(0, 24);
+      display.print("Started");
+      display.display();
+      Serial.println("Started");
+    })
+    .onStop([](int idx, int v, int up){
+      display.setCursor(0, 24);
+      display.print("Stopped");
+      display.display();
+      Serial.println("Stopped");
+    })
+    .onRecord([](int idx, int v, int up){
+      //TODO direct this output to the screen via intelligent menu class.
+      Serial.println("Analog Value: " + (String)logger.lastAnalogValue);
+      Serial.println("Digital Value: " + (String)logger.lastDigitalValue);
+      Serial.println("Count: " + (String)v);
+    });
 
   startBtn.begin(9)
-    .onPress(startLogging);
+    .onPress(logger, logger.EVT_START);
   stopBtn.begin(6)
-    .onPress(stopLogging);
+    .onPress(logger, logger.EVT_STOP);
   infoBtn.begin(5)
     .onPress(menu, menu.EVT_STEP);
 
   initDisplay();
   menu.begin();
+  //TODO If I get around to making an intelligent menu class, I can dynamically
+  //build this series of `menu.onStep` instructions based on how many screens
+  //the menu class contains using a for loop or something.
   menu.onStep(0, cycleMenu);
   menu.onStep(1, cycleMenu);
   menu.onStep(2, cycleMenu);
