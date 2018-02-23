@@ -10,6 +10,9 @@ const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
 const unsigned int cardInterval = 500;
 
+const byte menuPages = 3;
+const byte menuRows = 4;
+
 // Init WiFi module
 //TODO built an Automaton machine for the WiFi module.
 
@@ -20,54 +23,83 @@ Atm_logger logger;
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 Atm_step menu;
 
-//TODO replace this nasty big switch case with an intelligent menu class that
-//keeps track of info items and which screen/location they're at, and setters
-//for each item. Then any function can just update an item, and the class will
-//decide if it's currently visible and needs to be updated or not, and where
-//on the display to put it.
-void cycleMenu( int idx, int v, int up ) {
-  switch(v) {
-    case 0:
-      Serial.println("WiFi info screen selected.");
 
-      display.fillRect(44, 0, 84, 32, BLACK);
-      display.setCursor(45, 0);
-      display.println("IP: ");
-      display.setCursor(45, 8);
-      display.println("SSID: ");
-      display.setCursor(45, 16);
-      display.println("RSSI: ");
-      display.display();
-      break;
+void drawMenu(int idx, int v, int up);
 
-    case 1:
-      Serial.println("Data info screen selected.");
+class Menu {
+public:
+  enum ItemName {IP, SSID, RSSI, COND, RD15, RELAY, DB, DB_INT, FILE, FILE_INT};
+private:
+  struct MenuItem {
+    ItemName id;
+    char content[14+1];   //There is space on screen for 14 chars, plus null termination
+    byte nameLength;      //How much of the content is the name?
+  };
 
-      display.fillRect(44, 0, 84, 32, BLACK);
-      display.setCursor(45, 0);
-      display.println("Cond: ");
-      display.setCursor(45, 8);
-      display.println("RD15\%: ");
-      display.setCursor(45, 16);
-      display.println("Relay: ");
-      display.display();
-      break;
+public:
+  Menu() :
+    menuItems
+    {
+      {
+        {IP, "IP: \0", 4},
+        {SSID, "SSID: \0", 6},
+        {RSSI, "RSSI: \0", 6}
+      },
+      {
+        {COND, "Cond: \0", 6},
+        {RD15, "RD15\%: \0", 7},
+        {RELAY, "Relay: \0", 7}
+      },
+      {
+        {DB, "DB: \0", 4},
+        {DB_INT, "DB Int: \0", 8},
+        {FILE, "\0", 0},
+        {FILE_INT, "File Int: \0", 10}
+      }
+    }
+  {}
+  MenuItem menuItems[menuPages][menuRows];
+  void draw(int page);
+  void updateValue(const ItemName item, const char* value);
+} menuData; //Make a single instance of `Menu`
 
-    case 2:
-      Serial.println("Logging info screen selected.");
 
-      display.fillRect(44, 0, 84, 32, BLACK);
-      display.setCursor(45, 0);
-      display.println("DB: ");
-      display.setCursor(45, 8);
-      display.println("DB Int: ");
-      display.setCursor(45, 16);
-      display.println("SD: ");
-      display.setCursor(45, 24);
-      display.println("SD Int: ");
-      display.display();
-      break;
+
+void Menu::draw(int page) {
+  display.fillRect(44, 0, 84, 32, BLACK);
+
+  for(int row = 0; row < menuRows; row++) {
+    display.setCursor(45, row * 8);
+    display.println(menuItems[page][row].content);
   }
+
+  display.display();
+}
+
+void Menu::updateValue(const ItemName item, const char* value) {
+
+  for(int page = 0; page < menuPages; page++) {
+    for(int row = 0; row < menuRows; row++) {
+      if(menuItems[page][row].id == item) {
+
+        strncpy(menuItems[page][row].content + menuItems[page][row].nameLength,
+          value, 14 - menuItems[page][row].nameLength);
+
+        if(menu.state() == page) {
+          display.fillRect(44, row * 8, 84, 8, BLACK);
+          display.setCursor(45, row * 8);
+          display.println(menuItems[page][row].content);
+          display.display();
+        }
+
+        return;
+      }
+    }
+  }
+}
+
+void drawMenu(int idx, int v, int up) {
+  menuData.draw(v);
 }
 
 void initDisplay() {
@@ -93,7 +125,6 @@ Atm_button stopBtn;
 Atm_button infoBtn;
 
 
-
 void setup() {
   analogReadResolution(12);
 
@@ -103,15 +134,28 @@ void setup() {
       display.print("Started");
       display.display();
       Serial.println("Started");
+
+      //TODO find a way to pass cardInterval to the updateValue handler.
+      //Make better string handling? Shouldn't be hard to modify updateValue to
+      //accept strings instead of char[] and then strcopy.
+
+      //menuData.updateValue(Menu::FILE_INT, cardInterval)
+      menuData.updateValue(Menu::FILE, logger.getFilename());
     })
     .onStop([](int idx, int v, int up){
       display.setCursor(0, 24);
       display.print("Stopped");
       display.display();
       Serial.println("Stopped");
+
+      menuData.updateValue(Menu::FILE, "(no file)");
     })
     .onRecord([](int idx, int v, int up){
-      //TODO direct this output to the screen via intelligent menu class.
+      char result[8];
+      sprintf(result, "%.2f", logger.lastAnalogValue);
+      menuData.updateValue(Menu::COND, result);
+      menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
+
       Serial.println("Analog Value: " + (String)logger.lastAnalogValue);
       Serial.println("Digital Value: " + (String)logger.lastDigitalValue);
       Serial.println("Count: " + (String)v);
@@ -129,9 +173,11 @@ void setup() {
   //TODO If I get around to making an intelligent menu class, I can dynamically
   //build this series of `menu.onStep` instructions based on how many screens
   //the menu class contains using a for loop or something.
-  menu.onStep(0, cycleMenu);
-  menu.onStep(1, cycleMenu);
-  menu.onStep(2, cycleMenu);
+  //
+  //EVEN BETTER!! Incorporate menuData into this step machine.
+  menu.onStep(0, drawMenu);
+  menu.onStep(1, drawMenu);
+  menu.onStep(2, drawMenu);
   menu.trigger( menu.EVT_STEP );
 }
 

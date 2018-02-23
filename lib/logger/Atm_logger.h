@@ -58,6 +58,8 @@ class Atm_logger: public Machine {
   float lastAnalogValue;
   bool lastDigitalValue;
 
+  char* getFilename();
+
  private:
   enum { ENT_STOPPED, ENT_STARTING, EXT_STARTING, LP_STARTED, ENT_RECORDING, EXT_RECORDING }; // ACTIONS
   enum { ON_RECORD, ON_START, ON_STOP, CONN_MAX }; // CONNECTORS
@@ -69,7 +71,7 @@ class Atm_logger: public Machine {
   atm_timer_millis _timer_log;
   RunningAverage _analogValue;
   unsigned int _cardInterval;
-  String _filename;
+  char _filename[13];
   File _logFile;
   void getNextLogFile();
 

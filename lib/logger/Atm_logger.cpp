@@ -123,13 +123,18 @@ int Atm_logger::state( void ) {
   return Machine::state();
 }
 
+char* Atm_logger::getFilename() {
+  return _filename;
+}
+
 void Atm_logger::getNextLogFile() {
   if (SD.begin(10)) {   // `10` is chip select pin on Feather M0
     int i = 0;
-    while(1) {
+    while(i < 10000) {
       i++;
-      if (!SD.exists("data" + (String)i + ".csv")) {
-        _filename = "data" + (String)i + ".csv";
+      String temp = "data" + (String)i + ".csv";
+      if (!SD.exists(temp)) {
+        strcpy(_filename, temp.c_str());
         break;
       }
     }
