@@ -110,8 +110,8 @@ void initDisplay() {
 
   display.drawChar(0, 1, 'A', WHITE, BLACK, 1);
   display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE);
-  display.drawChar(0, 11, 'B', WHITE, BLACK, 1);
-  display.fillRect(11, 12, 5, 5, WHITE);
+  //display.drawChar(0, 11, 'B', WHITE, BLACK, 1);
+  //display.fillRect(11, 12, 5, 5, WHITE);
   display.drawChar(0, 23, 'C', WHITE, BLACK, 1);
   display.drawChar(11, 23, 'i', WHITE, BLACK, 1);
   display.drawCircle(13, 26, 5, WHITE);
@@ -122,8 +122,7 @@ void initDisplay() {
 
 
 // Init buttons and actions
-Atm_button startBtn;
-Atm_button stopBtn;
+Atm_button toggleBtn;
 Atm_button infoBtn;
 
 
@@ -148,8 +147,8 @@ void setup() {
 
   logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
     .onStart([](int idx, int v, int up){
-
-      Serial.println("Started");
+      display.fillRect(11, 2, 5, 5, WHITE);
+      display.display();
       digitalWrite(LED_BUILTIN, HIGH);
       //TODO find a way to pass contents of `cardInterval` to the updateValue handler.
       //Make better string handling? Shouldn't be hard to modify updateValue to
@@ -157,14 +156,19 @@ void setup() {
 
       //menuData.updateValue(Menu::FILE_INT, cardInterval)
       menuData.updateValue(Menu::FILE, logger.getFilename());
+
+      Serial.println("Started");
     })
     .onStop([](int idx, int v, int up){
+      display.fillRect(11, 2, 5, 5, BLACK);
+      display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE);
       digitalWrite(LED_BUILTIN, LOW);
-      Serial.println("Stopped");
 
       menuData.updateValue(Menu::FILE, "(no file)");
       menuData.updateValue(Menu::COND, "");
       menuData.updateValue(Menu::RELAY, "");
+
+      Serial.println("Stopped");
     })
     .onRecord([](int idx, int v, int up){
       char result[8];
@@ -181,10 +185,8 @@ void setup() {
       Serial.println(v);
     });
 
-  startBtn.begin(9)
-    .onPress(logger, logger.EVT_START);
-  stopBtn.begin(6)
-    .onPress(logger, logger.EVT_STOP);
+  toggleBtn.begin(9)
+    .onPress(logger, logger.EVT_TOGGLE);
   infoBtn.begin(5)
     .onPress(menu, menu.EVT_STEP);
 

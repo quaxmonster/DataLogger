@@ -8,11 +8,11 @@ Atm_logger& Atm_logger::begin(int AnalogPin, int DigitalPin, unsigned int CardIn
   //TODO Add counter or something to know when to log to web.
   // clang-format off
   const static state_t state_table[] PROGMEM = {
-    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_START  EVT_STOP  EVT_TIMER_LOG     ELSE */
-    /*   STOPPED */   ENT_STOPPED,         -1,      -1,  STARTING,       -1,            -1,      -1,
-    /*  STARTING */  ENT_STARTING,         -1,      -1,        -1,       -1,            -1, STARTED,
-    /*   STARTED */            -1, LP_STARTED,      -1,        -1,  STOPPED,     RECORDING,      -1,
-    /* RECORDING */ ENT_RECORDING,         -1,      -1,        -1,       -1,            -1, STARTED,
+    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_TOGGLE  EVT_START  EVT_STOP  EVT_TIMER_LOG     ELSE */
+    /*   STOPPED */   ENT_STOPPED,         -1,      -1,   STARTING,  STARTING,       -1,            -1,      -1,
+    /*  STARTING */  ENT_STARTING,         -1,      -1,         -1,        -1,       -1,            -1, STARTED,
+    /*   STARTED */            -1, LP_STARTED,      -1,    STOPPED,        -1,  STOPPED,     RECORDING,      -1,
+    /* RECORDING */ ENT_RECORDING,         -1,      -1,         -1,        -1,       -1,            -1, STARTED,
   };
   // clang-format on
   Machine::begin( state_table, ELSE );
@@ -157,6 +157,11 @@ void Atm_logger::getNextLogFile() {
  *
  */
 
+Atm_logger& Atm_logger::toggle() {
+  trigger( EVT_TOGGLE );
+  return *this;
+}
+
 Atm_logger& Atm_logger::start() {
   trigger( EVT_START );
   return *this;
@@ -215,6 +220,6 @@ Atm_logger& Atm_logger::onStop( atm_cb_push_t callback, int idx ) {
 
 Atm_logger& Atm_logger::trace( Stream & stream ) {
   Machine::setTrace( &stream, atm_serial_debug::trace,
-    "LOGGER\0EVT_START\0EVT_STOP\0EVT_TIMER_LOG\0ELSE\0STOPPED\0STARTING\0STARTED\0RECORDING" );
+    "LOGGER\0EVT_TOGGLE\0EVT_START\0EVT_STOP\0EVT_TIMER_LOG\0ELSE\0STOPPED\0STARTING\0STARTED\0RECORDING" );
   return *this;
 }
