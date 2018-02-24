@@ -68,6 +68,8 @@ void Atm_logger::action( int id ) {
     }
 
     case ENT_RECORDING: {
+      //TODO Also write timestamp to logger object so that wifi module has access
+      //to it.
       lastAnalogValue = _analogValue.average();
       lastDigitalValue = !digitalRead(_digitalPin);
 

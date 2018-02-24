@@ -1,69 +1,64 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <WiFi101.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Automaton.h>
 #include "Atm_logger.h"
+#include "Atm_atwinc1500.h"
 
 const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
-const unsigned int cardInterval = 500;
-
 const byte menuPages = 3;
 const byte menuRows = 4;
+const unsigned int cardInterval = 500;
+char ap_ssid[] = "whiteface1";
+char ap_password[] = "secondnaturestudios";
 
-// Init WiFi module
-//TODO built an Automaton machine for the WiFi module.
-
-// Init logger
 Atm_logger logger;
+Atm_atwinc1500 wifi;
 
 // Init display and menus
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 Atm_step menu;
 
-
-void drawMenu(int idx, int v, int up);
-
 class Menu {
 public:
   enum ItemName {IP, SSID, RSSI, COND, RD15, RELAY, DB, DB_INT, FILE, FILE_INT};
+  Menu();
 private:
   struct MenuItem {
     ItemName id;
     char content[14+1];   //There is space on screen for 14 chars, plus null termination
     byte nameLength;      //How much of the content is the name?
   };
+  MenuItem menuItems[menuPages][menuRows];
 
 public:
-  Menu() :
-    menuItems
-    {
-      {
-        {IP, "IP: \0", 4},
-        {SSID, "SSID: \0", 6},
-        {RSSI, "RSSI: \0", 6}
-      },
-      {
-        {COND, "Cond: \0", 6},
-        {RD15, "RD15\%: \0", 7},
-        {RELAY, "Relay: \0", 7}
-      },
-      {
-        {DB, "DB: \0", 4},
-        {DB_INT, "DB Int: \0", 8},
-        {FILE, "\0", 0},
-        {FILE_INT, "File Int: \0", 10}
-      }
-    }
-  {}
-  MenuItem menuItems[menuPages][menuRows];
   void draw(int page);
   void updateValue(const ItemName item, const char* value);
-} menuData; //Make a single instance of `Menu`
+} menuData;
 
-
+Menu::Menu() :
+  menuItems
+  {
+    {
+      {IP, "IP: \0", 4},
+      {SSID, "SSID: \0", 6},
+      {RSSI, "RSSI: \0", 6}
+    },
+    {
+      {COND, "Cond: \0", 6},
+      {RD15, "RD15\%: \0", 7},
+      {RELAY, "Relay: \0", 7}
+    },
+    {
+      {DB, "DB: \0", 4},
+      {DB_INT, "DB Int: \0", 8},
+      {FILE, "\0", 0},
+      {FILE_INT, "File Int: \0", 10}
+    }
+  }
+{}
 
 void Menu::draw(int page) {
   display.fillRect(44, 0, 84, 32, BLACK);
@@ -98,6 +93,7 @@ void Menu::updateValue(const ItemName item, const char* value) {
   }
 }
 
+
 void drawMenu(int idx, int v, int up) {
   menuData.draw(v);
 }
@@ -126,7 +122,21 @@ Atm_button infoBtn;
 
 
 void setup() {
-  analogReadResolution(12);
+  //TODO Add a timer and some code into the wifi machine to periodically update
+  //wifi stats like RSSI. Also output IP and SSID to menu once there's better
+  //string handling for `menuData.updateValue`.
+  //TODO Figure out whether logger or wifi machine should handle logging to DB.
+  wifi.begin( ap_ssid, ap_password )
+    .onChange( true, [] ( int idx, int v, int up ) {
+      menuData.updateValue(Menu::SSID, wifi.ssid());
+      Serial.print( "Connected to Wifi, browse to http://" );
+      Serial.println( wifi.ip() );
+    })
+    .onChange( false, [] ( int idx, int v, int up ) {
+      Serial.println( "Lost WIFI connection" );
+    })
+    .start()
+    .trace(Serial);
 
   logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
     .onStart([](int idx, int v, int up){
@@ -135,7 +145,7 @@ void setup() {
       display.display();
       Serial.println("Started");
 
-      //TODO find a way to pass cardInterval to the updateValue handler.
+      //TODO find a way to pass contents of `cardInterval` to the updateValue handler.
       //Make better string handling? Shouldn't be hard to modify updateValue to
       //accept strings instead of char[] and then strcopy.
 
@@ -156,9 +166,13 @@ void setup() {
       menuData.updateValue(Menu::COND, result);
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
-      Serial.println("Analog Value: " + (String)logger.lastAnalogValue);
-      Serial.println("Digital Value: " + (String)logger.lastDigitalValue);
-      Serial.println("Count: " + (String)v);
+      //TODO Add LED blink when value is written
+      Serial.print("Analog Value: ");
+      Serial.println(logger.lastAnalogValue);
+      Serial.print("Digital Value: ");
+      Serial.println(logger.lastDigitalValue);
+      Serial.print("Count: ");
+      Serial.println(v);
     });
 
   startBtn.begin(9)
