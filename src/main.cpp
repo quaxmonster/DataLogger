@@ -10,6 +10,7 @@ const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
 const byte menuPages = 3;
 const byte menuRows = 4;
+const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
 char ap_ssid[] = "whiteface1";
 char ap_password[] = "secondnaturestudios";
@@ -28,15 +29,17 @@ public:
 private:
   struct MenuItem {
     ItemName id;
-    char content[14+1];   //There is space on screen for 14 chars, plus null termination
-    byte nameLength;      //How much of the content is the name?
+    char content[menuWidth+1];   //There is space on screen for 14 chars, plus null termination
+    byte nameLength;             //How much of the content is the name?
   };
   MenuItem menuItems[menuPages][menuRows];
 
 public:
   void draw(int page);
   void updateValue(const ItemName item, const char* value);
-} menuData;
+};
+
+Menu menuData;
 
 Menu::Menu() :
   menuItems
@@ -61,10 +64,10 @@ Menu::Menu() :
 {}
 
 void Menu::draw(int page) {
-  display.fillRect(44, 0, 84, 32, BLACK);
+  display.fillRect(24, 0, 102, 32, BLACK);
 
   for(int row = 0; row < menuRows; row++) {
-    display.setCursor(45, row * 8);
+    display.setCursor(24, row * 8);
     display.println(menuItems[page][row].content);
   }
 
@@ -78,11 +81,11 @@ void Menu::updateValue(const ItemName item, const char* value) {
       if(menuItems[page][row].id == item) {
 
         strncpy(menuItems[page][row].content + menuItems[page][row].nameLength,
-          value, 14 - menuItems[page][row].nameLength);
+          value, menuWidth - menuItems[page][row].nameLength);
 
         if(menu.state() == page) {
-          display.fillRect(44, row * 8, 84, 8, BLACK);
-          display.setCursor(45, row * 8);
+          display.fillRect(24, row * 8, 102, 8, BLACK);
+          display.setCursor(24, row * 8);
           display.println(menuItems[page][row].content);
           display.display();
         }
@@ -104,13 +107,16 @@ void initDisplay() {
   display.setTextWrap(false);
   display.setTextSize(1);
   display.setTextColor(WHITE, BLACK);
-  display.setCursor(0,0);
 
-  display.println("A:Start");
-  display.println("B:Stop");
-  display.println("C:Info");
-  display.println("Stopped");
-  display.drawFastVLine(43, 0, 32, WHITE);
+  display.drawChar(0, 1, 'A', WHITE, BLACK, 1);
+  display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE);
+  display.drawChar(0, 11, 'B', WHITE, BLACK, 1);
+  display.fillRect(11, 12, 5, 5, WHITE);
+  display.drawChar(0, 23, 'C', WHITE, BLACK, 1);
+  display.drawChar(11, 23, 'i', WHITE, BLACK, 1);
+  display.drawCircle(13, 26, 5, WHITE);
+  //display.println("Stopped");
+  display.drawFastVLine(21, 0, 32, WHITE);
   display.display();
 }
 
@@ -122,6 +128,8 @@ Atm_button infoBtn;
 
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+
   //TODO Add a timer and some code into the wifi machine to periodically update
   //wifi stats like RSSI. Also output IP and SSID to menu once there's better
   //string handling for `menuData.updateValue`.
@@ -140,11 +148,9 @@ void setup() {
 
   logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
     .onStart([](int idx, int v, int up){
-      display.setCursor(0, 24);
-      display.print("Started");
-      display.display();
-      Serial.println("Started");
 
+      Serial.println("Started");
+      digitalWrite(LED_BUILTIN, HIGH);
       //TODO find a way to pass contents of `cardInterval` to the updateValue handler.
       //Make better string handling? Shouldn't be hard to modify updateValue to
       //accept strings instead of char[] and then strcopy.
@@ -153,12 +159,12 @@ void setup() {
       menuData.updateValue(Menu::FILE, logger.getFilename());
     })
     .onStop([](int idx, int v, int up){
-      display.setCursor(0, 24);
-      display.print("Stopped");
-      display.display();
+      digitalWrite(LED_BUILTIN, LOW);
       Serial.println("Stopped");
 
       menuData.updateValue(Menu::FILE, "(no file)");
+      menuData.updateValue(Menu::COND, "");
+      menuData.updateValue(Menu::RELAY, "");
     })
     .onRecord([](int idx, int v, int up){
       char result[8];
