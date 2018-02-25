@@ -50,6 +50,7 @@ void Atm_logger::action( int id ) {
   switch ( id ) {
     case ENT_STOPPED: {
       _timer_log.set(ATM_TIMER_OFF);
+      SD.end();
       push( connectors, ON_STOP, 0, 0, 0 );
       return;
     }
@@ -132,11 +133,16 @@ char* Atm_logger::getFilename() {
 void Atm_logger::getNextLogFile() {
   if (SD.begin(10)) {   // `10` is chip select pin on Feather M0
     int i = 0;
+    char temp[13] = "data";   //Max filesize length 8+3+period+null
+    char numStr[9] = "";      //Size of max number (9999) + extension ".csv" + null
     while(i < 10000) {
       i++;
-      String temp = "data" + (String)i + ".csv";
+
+      sprintf(numStr, "%d.csv", i);     //Put the number and extension into numStr
+      strcpy(temp + 4, numStr);         //Concatenate that with temp
+
       if (!SD.exists(temp)) {
-        strcpy(_filename, temp.c_str());
+        strcpy(_filename, temp);
         break;
       }
     }

@@ -70,6 +70,10 @@ char* Atm_atwinc1500::ssid( void ) {
   return WiFi.SSID();
 }
 
+int Atm_atwinc1500::rssi( void ) {
+  return WiFi.RSSI();
+}
+
 /* Optionally override the default trigger() method
  * Control how your machine processes triggers
  */

@@ -22,6 +22,7 @@ class Atm_atwinc1500: public Machine {
 
   IPAddress ip( void );
   char* ssid( void );
+  int rssi( void );
 
  private:
   enum { ENT_START, ENT_ACTIVE, ENT_DISCONN }; // ACTIONS

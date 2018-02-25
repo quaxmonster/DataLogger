@@ -11,7 +11,7 @@ const byte pumpRelayPin = 12;
 const byte menuPages = 3;
 const byte menuRows = 4;
 const byte menuWidth = 17;
-const unsigned int cardInterval = 500;
+const unsigned int cardInterval = 1000;
 char ap_ssid[] = "whiteface1";
 char ap_password[] = "secondnaturestudios";
 
@@ -37,6 +37,7 @@ private:
 public:
   void draw(int page);
   void updateValue(const ItemName item, const char* value);
+  // void updateValue(const ItemName item, String& value);
 };
 
 Menu menuData;
@@ -96,6 +97,9 @@ void Menu::updateValue(const ItemName item, const char* value) {
   }
 }
 
+// void Menu::updateValue(const ItemName item, String& value) {
+//   updateValue(item, value.c_str());
+// }
 
 void drawMenu(int idx, int v, int up) {
   menuData.draw(v);
@@ -115,7 +119,6 @@ void initDisplay() {
   display.drawChar(0, 23, 'C', WHITE, BLACK, 1);
   display.drawChar(11, 23, 'i', WHITE, BLACK, 1);
   display.drawCircle(13, 26, 5, WHITE);
-  //display.println("Stopped");
   display.drawFastVLine(21, 0, 32, WHITE);
   display.display();
 }
@@ -136,25 +139,37 @@ void setup() {
   wifi.begin( ap_ssid, ap_password )
     .onChange( true, [] ( int idx, int v, int up ) {
       menuData.updateValue(Menu::SSID, wifi.ssid());
-      Serial.print( "Connected to Wifi, browse to http://" );
+
+      char ipAddress[16];
+      IPAddress ip = wifi.ip();
+      sprintf(ipAddress,"%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+      menuData.updateValue(Menu::IP, ipAddress);
+
+      char rssiChar[4];
+      int rssi = wifi.rssi();
+      sprintf(rssiChar, "%-d", rssi);
+      menuData.updateValue(Menu::RSSI, rssiChar);
+
+      Serial.print( "Connected to Wifi, @ " );
       Serial.println( wifi.ip() );
     })
     .onChange( false, [] ( int idx, int v, int up ) {
+      menuData.updateValue(Menu::IP, "");
+      menuData.updateValue(Menu::SSID, "");
+      menuData.updateValue(Menu::RSSI, "");
       Serial.println( "Lost WIFI connection" );
     })
-    .start()
-    .trace(Serial);
+    .start();
 
   logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
     .onStart([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, WHITE);
       display.display();
       digitalWrite(LED_BUILTIN, HIGH);
-      //TODO find a way to pass contents of `cardInterval` to the updateValue handler.
-      //Make better string handling? Shouldn't be hard to modify updateValue to
-      //accept strings instead of char[] and then strcopy.
 
-      //menuData.updateValue(Menu::FILE_INT, cardInterval)
+      char cardIntStr[13];
+      sprintf(cardIntStr, "%-dms", cardInterval);
+      menuData.updateValue(Menu::FILE_INT, cardIntStr);
       menuData.updateValue(Menu::FILE, logger.getFilename());
 
       Serial.println("Started");
@@ -171,8 +186,11 @@ void setup() {
       Serial.println("Stopped");
     })
     .onRecord([](int idx, int v, int up){
+      //This used to work and for some reason stopped working.
+      //sprintf now returns a huge number and outputs an empty char buffer.
       char result[8];
-      sprintf(result, "%.2f", logger.lastAnalogValue);
+      sprintf(result, "%-.2f", logger.lastAnalogValue);
+
       menuData.updateValue(Menu::COND, result);
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
