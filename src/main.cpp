@@ -126,8 +126,7 @@ Atm_button infoBtn;
 Atm_led led;
 
 void setup() {
-  led.begin(LED_BUILTIN)
-    .lead(100);     //Add a 100ms pause before applying an EVT_START command
+  led.begin(LED_BUILTIN);
 
   //TODO Add a timer and some code into the wifi machine to periodically update
   //wifi stats like RSSI.
@@ -192,10 +191,6 @@ void setup() {
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
       // TODO Add LED blink when value is written
-      // This may work, because I've installed a delay before led.on() takes effect.
-      // It may very well not work, though, or may not be the best solution. 
-      led.off();
-      led.on();
 
       Serial.print("Analog Value: ");
       Serial.println(logger.lastAnalogValue);
