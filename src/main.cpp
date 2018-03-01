@@ -11,7 +11,8 @@ const byte pumpRelayPin = 12;
 const byte menuPages = 3;
 const byte menuRows = 4;
 const byte menuWidth = 17;
-const unsigned int cardInterval = 1000;
+const unsigned int cardInterval = 500;
+const unsigned int dbInterval = 1000 * 60; //1 minute
 char ap_ssid[] = "whiteface1";
 char ap_password[] = "secondnaturestudios";
 
@@ -156,7 +157,7 @@ void setup() {
     })
     .start();
 
-  logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
+  logger.begin(currentLoopPin, pumpRelayPin, cardInterval, dbInterval)
     .onStart([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
       display.display();
@@ -180,17 +181,15 @@ void setup() {
 
       Serial.println("Stopped");
     })
-    .onRecord([](int idx, int v, int up){
+    .onUpdate([](int idx, int v, int up){
       // Can't get consistent results using sprintf with floats, so using this
       // hacky workaround. Returns a float with two decimal points of precision.
       // char[8] will fit up to 4 digits to the left of the decimal.
       char result[8] = "";
       sprintf(result, "%d.%d", (int)logger.lastAnalogValue, (int)(logger.lastAnalogValue * 100) % 100);
-
       menuData.updateValue(Menu::COND, result);
-      menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
-      // TODO Add LED blink when value is written
+      menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
       Serial.print("Analog Value: ");
       Serial.println(logger.lastAnalogValue);
@@ -198,6 +197,13 @@ void setup() {
       Serial.println(logger.lastDigitalValue);
       Serial.print("Count: ");
       Serial.println(v);
+    })
+    .onRecord([](int idx, int v, int up){
+      //TODO Add LED blink when value is written
+
+      if (v) {
+        //Write value to database.
+      }
     });
 
   toggleBtn.begin(9)

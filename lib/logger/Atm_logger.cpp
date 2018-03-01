@@ -6,24 +6,30 @@ RTC_PCF8523 rtc;
  * Add extra initialization code
  */
 
-Atm_logger& Atm_logger::begin(int AnalogPin, int DigitalPin, unsigned int CardInterval) {
+ Atm_logger& Atm_logger::begin(
+   int AnalogPin, int DigitalPin,
+   unsigned int CardInterval, unsigned int DBInterval) {
   //TODO Add counter or something to know when to log to web.
   // clang-format off
   const static state_t state_table[] PROGMEM = {
-    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_TOGGLE  EVT_START  EVT_STOP  EVT_TIMER_LOG     ELSE */
-    /*   STOPPED */   ENT_STOPPED,         -1,      -1,   STARTING,  STARTING,       -1,            -1,      -1,
-    /*  STARTING */  ENT_STARTING,         -1,      -1,         -1,        -1,       -1,            -1, STARTED,
-    /*   STARTED */            -1, LP_STARTED,      -1,    STOPPED,        -1,  STOPPED,     RECORDING,      -1,
-    /* RECORDING */ ENT_RECORDING,         -1,      -1,         -1,        -1,       -1,            -1, STARTED,
+    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_TOGGLE  EVT_DB_TIMER  EVT_SD_TIMER  EVT_START  EVT_STOP     ELSE */
+    /*   STOPPED */   ENT_STOPPED,    LP_READ,      -1,   STARTING,           -1,           -1,  STARTING,       -1,      -1,
+    /*    UPDATE */    ENT_UPDATE,         -1,      -1,         -1,           -1,           -1,        -1,       -1, STOPPED,
+    /*  STARTING */  ENT_STARTING,         -1,      -1,         -1,           -1,           -1,        -1,       -1, STARTED,
+    /*   STARTED */            -1,    LP_READ,      -1,    STOPPED,    DB_RECORD,    SD_RECORD,        -1,  STOPPED,      -1,
+    /* SD_RECORD */ ENT_SD_RECORD,         -1,      -1,         -1,           -1,           -1,        -1,       -1, STARTED,
+    /* DB_RECORD */ ENT_DB_RECORD,         -1,      -1,         -1,           -1,           -1,        -1,       -1, STARTED,
   };
   // clang-format on
   Machine::begin( state_table, ELSE );
   this->_analogPin = AnalogPin;
   this->_digitalPin = DigitalPin;
   this->_cardInterval = CardInterval;
+  this->_dbInterval = DBInterval;
   pinMode(_digitalPin, INPUT_PULLUP);
   analogReadResolution(12);
-  _timer_log.set(ATM_TIMER_OFF);
+  _timer_sd.set(CardInterval);
+  _timer_db.set(ATM_TIMER_OFF);
   return *this;
 }
 
@@ -33,8 +39,10 @@ Atm_logger& Atm_logger::begin(int AnalogPin, int DigitalPin, unsigned int CardIn
 
 int Atm_logger::event( int id ) {
   switch ( id ) {
-    case EVT_TIMER_LOG:
-      return _timer_log.expired(this);
+    case EVT_DB_TIMER:
+      return _timer_db.expired(this);
+    case EVT_SD_TIMER:
+      return _timer_sd.expired(this);
   }
   return 0;
 }
@@ -46,14 +54,20 @@ int Atm_logger::event( int id ) {
  *   push( connectors, ON_RECORD, 0, <v>, <up> );
  *   push( connectors, ON_START, 0, <v>, <up> );
  *   push( connectors, ON_STOP, 0, <v>, <up> );
+ *   push( connectors, ON_UPDATE, 0, <v>, <up> );
  */
 
 void Atm_logger::action( int id ) {
   switch ( id ) {
     case ENT_STOPPED: {
-      _timer_log.set(ATM_TIMER_OFF);
+      _timer_db.set(ATM_TIMER_OFF);
       SD.end();
       push( connectors, ON_STOP, 0, 0, 0 );
+      return;
+    }
+
+    case ENT_UPDATE: {
+      push( connectors, ON_UPDATE, 0, 0, 0 );
       return;
     }
 
@@ -61,16 +75,17 @@ void Atm_logger::action( int id ) {
       getNextLogFile();
       _analogValue.reset();
       push( connectors, ON_START, 0, 0, 0 );
-      _timer_log.set(_cardInterval);
+      _timer_sd.set(_cardInterval);
+      _timer_sd.set(_dbInterval);
       return;
     }
 
-    case LP_STARTED: {
+    case LP_READ: {
       _analogValue.addSample(analogRead(_analogPin));
       return;
     }
 
-    case ENT_RECORDING: {
+    case ENT_SD_RECORD: {
       lastTime = rtc.now();
       lastAnalogValue = _analogValue.average();
       lastDigitalValue = !digitalRead(_digitalPin);
@@ -101,8 +116,14 @@ void Atm_logger::action( int id ) {
         _logFile.close();
       }
 
-      push( connectors, ON_RECORD, 0, _analogValue._count, 0 );
+      push( connectors, ON_UPDATE, 0, 0, 0 );
+      push( connectors, ON_RECORD, 0, 0, 0 );  //Passing zero as middle param will indicate SD record
       _analogValue.reset();
+      return;
+    }
+
+    case ENT_DB_RECORD: {
+      push( connectors, ON_RECORD, 0, 1, 0 );  //Passing 1 as middle param will indicate DB record
       return;
     }
   }
@@ -219,12 +240,26 @@ Atm_logger& Atm_logger::onStop( atm_cb_push_t callback, int idx ) {
   return *this;
 }
 
+/*
+ * onUpdate() push connector variants ( slots 1, autostore 0, broadcast 0 )
+ */
+
+Atm_logger& Atm_logger::onUpdate( Machine& machine, int event ) {
+  onPush( connectors, ON_UPDATE, 0, 1, 1, machine, event );
+  return *this;
+}
+
+Atm_logger& Atm_logger::onUpdate( atm_cb_push_t callback, int idx ) {
+  onPush( connectors, ON_UPDATE, 0, 1, 1, callback, idx );
+  return *this;
+}
+
 /* State trace method
  * Sets the symbol table and the default logging method for serial monitoring
  */
 
 Atm_logger& Atm_logger::trace( Stream & stream ) {
   Machine::setTrace( &stream, atm_serial_debug::trace,
-    "LOGGER\0EVT_TOGGLE\0EVT_START\0EVT_STOP\0EVT_TIMER_LOG\0ELSE\0STOPPED\0STARTING\0STARTED\0RECORDING" );
+    "LOGGER\0EVT_TOGGLE\0EVT_DB_TIMER\0EVT_SD_TIMER\0EVT_START\0EVT_STOP\0ELSE\0STOPPED\0UPDATE\0STARTING\0STARTED\0SD_RECORD\0DB_RECORD" );
   return *this;
 }
