@@ -123,13 +123,14 @@ void initDisplay() {
 Atm_button toggleBtn;
 Atm_button infoBtn;
 
+Atm_led led;
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
+  led.begin(LED_BUILTIN)
+    .lead(100);     //Add a 100ms pause before applying an EVT_START command
 
   //TODO Add a timer and some code into the wifi machine to periodically update
-  //wifi stats like RSSI. Also output IP and SSID to menu once there's better
-  //string handling for `menuData.updateValue`.
+  //wifi stats like RSSI.
   //TODO Figure out whether logger or wifi machine should handle logging to DB.
   wifi.begin( ap_ssid, ap_password )
     .onChange( true, [] ( int idx, int v, int up ) {
@@ -158,9 +159,9 @@ void setup() {
 
   logger.begin(currentLoopPin, pumpRelayPin, cardInterval)
     .onStart([](int idx, int v, int up){
-      display.fillRect(11, 2, 5, 5, WHITE);
+      display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
       display.display();
-      digitalWrite(LED_BUILTIN, HIGH);
+      led.on();
 
       char cardIntStr[13];
       sprintf(cardIntStr, "%-dms", cardInterval);
@@ -170,9 +171,9 @@ void setup() {
       Serial.println("Started");
     })
     .onStop([](int idx, int v, int up){
-      display.fillRect(11, 2, 5, 5, BLACK);
-      display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE);
-      digitalWrite(LED_BUILTIN, LOW);
+      display.fillRect(11, 2, 5, 5, BLACK);   //Erase "stop" rectangle
+      display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE); //Draw "play" triangle
+      led.off();
 
       menuData.updateValue(Menu::FILE, "(no file)");
       menuData.updateValue(Menu::COND, "");
@@ -190,7 +191,12 @@ void setup() {
       menuData.updateValue(Menu::COND, result);
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
-      //TODO Add LED blink when value is written
+      // TODO Add LED blink when value is written
+      // This may work, because I've installed a delay before led.on() takes effect.
+      // It may very well not work, though, or may not be the best solution. 
+      led.off();
+      led.on();
+
       Serial.print("Analog Value: ");
       Serial.println(logger.lastAnalogValue);
       Serial.print("Digital Value: ");
