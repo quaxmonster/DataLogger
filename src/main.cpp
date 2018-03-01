@@ -37,7 +37,6 @@ private:
 public:
   void draw(int page);
   void updateValue(const ItemName item, const char* value);
-  // void updateValue(const ItemName item, String& value);
 };
 
 Menu menuData;
@@ -96,10 +95,6 @@ void Menu::updateValue(const ItemName item, const char* value) {
     }
   }
 }
-
-// void Menu::updateValue(const ItemName item, String& value) {
-//   updateValue(item, value.c_str());
-// }
 
 void drawMenu(int idx, int v, int up) {
   menuData.draw(v);
@@ -186,10 +181,11 @@ void setup() {
       Serial.println("Stopped");
     })
     .onRecord([](int idx, int v, int up){
-      //This used to work and for some reason stopped working.
-      //sprintf now returns a huge number and outputs an empty char buffer.
+      // Can't get consistent results using sprintf with floats, so using this
+      // hacky workaround. Returns a float with two decimal points of precision.
+      // char[8] will fit up to 4 digits to the left of the decimal.
       char result[8] = "";
-      sprintf(result, "%-.2f", logger.lastAnalogValue);
+      sprintf(result, "%d.%d", (int)logger.lastAnalogValue, (int)(logger.lastAnalogValue * 100) % 100);
 
       menuData.updateValue(Menu::COND, result);
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
