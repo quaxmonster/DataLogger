@@ -29,7 +29,7 @@ public:
 private:
   struct MenuItem {
     ItemName id;
-    char content[menuWidth+1];   //There is space on screen for 14 chars, plus null termination
+    char content[menuWidth+1];   //There is space on screen for `menuWidth` chars, plus null termination
     byte nameLength;             //How much of the content is the name?
   };
   MenuItem menuItems[menuPages][menuRows];
@@ -188,7 +188,7 @@ void setup() {
     .onRecord([](int idx, int v, int up){
       //This used to work and for some reason stopped working.
       //sprintf now returns a huge number and outputs an empty char buffer.
-      char result[8];
+      char result[8] = "";
       sprintf(result, "%-.2f", logger.lastAnalogValue);
 
       menuData.updateValue(Menu::COND, result);
