@@ -1,5 +1,7 @@
 #include "Atm_logger.h"
 
+RTC_PCF8523 rtc;
+
 /* Add optional parameters for the state machine to begin()
  * Add extra initialization code
  */
@@ -69,8 +71,7 @@ void Atm_logger::action( int id ) {
     }
 
     case ENT_RECORDING: {
-      //TODO Also write timestamp to logger object so that wifi module has access
-      //to it.
+      lastTime = rtc.now();
       lastAnalogValue = _analogValue.average();
       lastDigitalValue = !digitalRead(_digitalPin);
 
@@ -82,22 +83,20 @@ void Atm_logger::action( int id ) {
       // even if card is removed. Unfortunately on the Feather Datalogger wing
       // the pin that indicates whether a card is inserted isn't connected.
       if (_logFile) {
-        //TODO Figure out issue with redefining `rtc` and create timestamp.
-        // DateTime now = rtc.now();
-        // _logFile.print(now.month());
-        // _logFile.print("/");
-        // _logFile.print(now.day());
-        // _logFile.print("/");
-        // _logFile.print(now.year());
-        // _logFile.print(" ");
-        // _logFile.print(now.hour());
-        // _logFile.print(":");
-        // _logFile.print(now.minute());
-        // _logFile.print(":");
-        // _logFile.print(now.second());
-        _logFile.print(",");
+        _logFile.print(lastTime.month());
+        _logFile.print('/');
+        _logFile.print(lastTime.day());
+        _logFile.print('/');
+        _logFile.print(lastTime.year());
+        _logFile.print(' ');
+        _logFile.print(lastTime.hour());
+        _logFile.print(':');
+        _logFile.print(lastTime.minute());
+        _logFile.print(':');
+        _logFile.print(lastTime.second());
+        _logFile.print(',');
         _logFile.print(lastAnalogValue);
-        _logFile.print(",");
+        _logFile.print(',');
         _logFile.print(lastDigitalValue);
         _logFile.close();
       }

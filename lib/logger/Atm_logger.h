@@ -5,8 +5,6 @@
 #include <SD.h>
 #include <RTClib.h>
 
-//RTC_PCF8523 rtc;
-
 class RunningAverage {
   public:
     RunningAverage() {
@@ -58,6 +56,7 @@ class Atm_logger: public Machine {
 
   float lastAnalogValue;
   bool lastDigitalValue;
+  DateTime lastTime;
 
   char* getFilename();
 
@@ -119,4 +118,3 @@ Automaton::ATML::begin - Automaton Markup Language
 
 Automaton::ATML::end
 */
-
