@@ -7,18 +7,17 @@
 Atm_atwinc1500& Atm_atwinc1500::begin(const char ssid[], const char password[]) {
   // clang-format off
   const static state_t state_table[] PROGMEM = {
-    /*               ON_ENTER  ON_LOOP  ON_EXIT  EVT_START  EVT_STOP  EVT_TIMER  EVT_CONNECT  EVT_DISCONNECT  ELSE */
-    /*    IDLE */          -1,      -1,      -1,     START,       -1,        -1,          -1,             -1,   -1,
-    /*   START */   ENT_START,      -1,      -1,        -1,       -1,        -1,          -1,             -1, WAIT,
-    /*    WAIT */          -1,      -1,      -1,        -1,       -1,     CHECK,          -1,             -1,   -1,
-    /*   CHECK */          -1,      -1,      -1,        -1,       -1,        -1,      ACTIVE,             -1, WAIT,
-    /*  ACTIVE */  ENT_ACTIVE,      -1,      -1,        -1,       -1,        -1,          -1,        DISCONN,   -1,
-    /* DISCONN */ ENT_DISCONN,      -1,      -1,        -1,       -1,        -1,          -1,             -1, WAIT,
+    /*               ON_ENTER  ON_LOOP  ON_EXIT  EVT_START  EVT_STOP  EVT_TIMER  EVT_CONNECT  EVT_DISCONNECT   ELSE */
+    /*    IDLE */          -1,      -1,      -1,     START,       -1,        -1,          -1,             -1,    -1,
+    /*   START */   ENT_START,      -1,      -1,        -1,       -1,        -1,          -1,             -1,  WAIT,
+    /*    WAIT */          -1,      -1,      -1,        -1,       -1,     CHECK,          -1,             -1,    -1,
+    /*   CHECK */          -1,      -1,      -1,        -1,       -1,        -1,      ACTIVE,             -1,  WAIT,
+    /*  ACTIVE */  ENT_ACTIVE,      -1,      -1,        -1,       -1,        -1,          -1,        DISCONN,    -1,
+    /* DISCONN */ ENT_DISCONN,      -1,      -1,        -1,       -1,        -1,          -1,             -1, START,
   };
   // clang-format on
   Machine::begin( state_table, ELSE );
   WiFi.setPins(8,7,4,2);    //Configure pins for Feather M0
-  WiFi.begin( ssid, password );
   timer.set(500);
   return *this;
 }
@@ -52,6 +51,7 @@ int Atm_atwinc1500::event( int id ) {
 void Atm_atwinc1500::action( int id ) {
   switch ( id ) {
     case ENT_START:
+      WiFi.begin( ssid, password );
       return;
     case ENT_ACTIVE:
       push( connectors, ON_CHANGE, true, 1, 0 );
