@@ -9,7 +9,7 @@ class Atm_atwinc1500: public Machine {
   enum { IDLE, START, WAIT, CHECK, ACTIVE, DISCONN }; // STATES
   enum { EVT_START, EVT_STOP, EVT_TIMER, EVT_CONNECT, EVT_DISCONNECT, ELSE }; // EVENTS
   Atm_atwinc1500( void ) : Machine() {};
-  Atm_atwinc1500& begin(const char ssid[], const char password[]);
+  Atm_atwinc1500& begin(const char* SSID, const char* Password);
   Atm_atwinc1500& trace( Stream & stream );
   Atm_atwinc1500& trigger( int event );
   int state( void );
@@ -21,8 +21,10 @@ class Atm_atwinc1500: public Machine {
   Atm_atwinc1500& stop( void );
 
   IPAddress ip( void );
-  char* ssid( void );
+  char* getSSID( void );
   int rssi( void );
+  const char* ssid;
+  const char* password;
 
  private:
   enum { ENT_START, ENT_ACTIVE, ENT_DISCONN }; // ACTIONS

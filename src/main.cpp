@@ -13,8 +13,8 @@ const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
 const unsigned int dbInterval = 1000 * 15; //1 minute
-char ap_ssid[] = "AdaloggerTest";
-char ap_password[] = "Adafruit";
+const char ap_ssid[] = "AdaloggerTest";
+const char ap_password[] = "Adafruit";
 // if you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
 //IPAddress server(10, 0, 42, 42);  // numeric IP for server (no DNS)
@@ -156,7 +156,7 @@ void setup() {
   wifi.begin( ap_ssid, ap_password )
 
     .onChange( true, [] ( int idx, int v, int up ) {
-      menuData.updateValue(Menu::SSID, wifi.ssid());
+      menuData.updateValue(Menu::SSID, wifi.getSSID());
 
       char ipAddress[16];
       IPAddress ip = wifi.ip();

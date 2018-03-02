@@ -4,7 +4,7 @@
  * Add extra initialization code
  */
 
-Atm_atwinc1500& Atm_atwinc1500::begin(const char ssid[], const char password[]) {
+Atm_atwinc1500& Atm_atwinc1500::begin(const char* ssid, const char* password) {
   // clang-format off
   const static state_t state_table[] PROGMEM = {
     /*               ON_ENTER  ON_LOOP  ON_EXIT  EVT_START  EVT_STOP  EVT_TIMER  EVT_CONNECT  EVT_DISCONNECT   ELSE */
@@ -66,7 +66,7 @@ IPAddress Atm_atwinc1500::ip( void ) {
   return WiFi.localIP();
 }
 
-char* Atm_atwinc1500::ssid( void ) {
+char* Atm_atwinc1500::getSSID( void ) {
   return WiFi.SSID();
 }
 
