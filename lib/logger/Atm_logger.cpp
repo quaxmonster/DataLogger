@@ -63,7 +63,7 @@ void Atm_logger::action( int id ) {
   switch ( id ) {
     case ENT_STOPPING: {
       SD.end();
-      //client.stop();
+      client.stop();
       push( connectors, ON_STOP, 0, 0, 0 );
       return;
     }
@@ -138,24 +138,28 @@ void Atm_logger::action( int id ) {
       _db_counter.decrement();
 
       if (_db_counter.expired()) {
-        if (client.connect(_server, 80)) {
-          // Make an HTTP request:
-          client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
-          client.print(lastCondValue);
-          client.print("&conc=");
-          client.print(lastRD15Value);
-          client.print("&pumpState=");
-          client.print(lastDigitalValue ? '1' : '0');
-          client.println(" HTTP/1.1");
+        if (!client.connected()) client.connect(_server, 80);
 
-          client.print("Host: ");
-          client.println(_server);
+        Serial.print("Getting ready to send request...connection status is ");
+        Serial.println(client.connected());
+        // Make an HTTP request:
+        client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
+        client.print(lastCondValue);
+        client.print("&conc=");
+        client.print(lastRD15Value);
+        client.print("&pumpState=");
+        client.print(lastDigitalValue ? '1' : '0');
+        client.println(" HTTP/1.1");
 
-          client.println("Connection: close");
-          client.println();
+        client.print("Host: ");
+        client.println(_server);
 
-          client.stop();
-        }
+        client.println();
+        client.println();
+        client.flush();
+
+        Serial.print("Sent request. Connection status is ");
+        Serial.println(client.connected());
 
         _db_counter.set(_dbCount);
       }
