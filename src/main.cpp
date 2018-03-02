@@ -95,7 +95,6 @@ void Menu::updateValue(const ItemName item, const char* value) {
           display.fillRect(24, row * 8, 102, 8, BLACK);
           display.setCursor(24, row * 8);
           display.println(menuItems[page][row].content);
-          display.display();
         }
 
         return;
@@ -123,7 +122,6 @@ void initDisplay() {
   display.drawChar(11, 23, 'i', WHITE, BLACK, 1);
   display.drawCircle(13, 26, 5, WHITE);
   display.drawFastVLine(21, 0, 32, WHITE);
-  display.display();
 
   char tempArray[16];
   sprintf(tempArray,"%u.%u.%u.%u", server[0], server[1], server[2], server[3]);
@@ -134,6 +132,8 @@ void initDisplay() {
 
   sprintf(tempArray, "%-dms", cardInterval);
   menuData.updateValue(Menu::FILE_INT, tempArray);
+
+  display.display();
 }
 
 
@@ -147,6 +147,9 @@ Atm_led led;
 
 void setup() {
   led.begin(LED_BUILTIN);
+
+  //TODO Add ability to batch updateValue calls to avoid redrawing multiple
+  //times when updating multiple values.
 
   //TODO Add a timer and some code into the wifi machine to periodically update
   //wifi stats like RSSI.
@@ -165,15 +168,15 @@ void setup() {
       sprintf(rssiChar, "%-d", rssi);
       menuData.updateValue(Menu::RSSI, rssiChar);
 
-      Serial.print( "Connected to Wifi, @ " );
-      Serial.println( wifi.ip() );
+      display.display();
     })
 
     .onChange( false, [] ( int idx, int v, int up ) {
       menuData.updateValue(Menu::IP, "");
       menuData.updateValue(Menu::SSID, "");
       menuData.updateValue(Menu::RSSI, "");
-      Serial.println( "Lost WIFI connection" );
+
+      display.display();
     })
     .start();
 
@@ -184,10 +187,11 @@ void setup() {
 
     .onStart([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
-      display.display();
-      led.on();
-
       menuData.updateValue(Menu::FILE, logger.getFilename());
+
+      display.display();
+
+      led.on();
     })
 
     .onStop([](int idx, int v, int up){
@@ -196,6 +200,8 @@ void setup() {
       led.off();
 
       menuData.updateValue(Menu::FILE, "(no file)");
+
+      display.display();
     })
 
     .onUpdate([](int idx, int v, int up){
@@ -215,6 +221,8 @@ void setup() {
       menuData.updateValue(Menu::RD15, result);
 
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
+
+      display.display();
 
       // Serial.print("Analog Value: ");
       // Serial.println(logger.lastAnalogValue);
