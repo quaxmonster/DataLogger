@@ -15,9 +15,16 @@ const unsigned int cardInterval = 500;
 const unsigned int dbInterval = 1000 * 60; //1 minute
 char ap_ssid[] = "whiteface1";
 char ap_password[] = "secondnaturestudios";
+// if you don't want to use DNS (and reduce your sketch size)
+// use the numeric IP instead of the name for the server:
+IPAddress server(10, 0, 42, 42);  // numeric IP for server (no DNS)
+//char server[] = "ofweb.srs.is.keysight.com";    // name address for server (using DNS)
+
 
 Atm_logger logger;
 Atm_atwinc1500 wifi;
+
+
 
 // Init display and menus
 Adafruit_SSD1306 display = Adafruit_SSD1306();
@@ -59,7 +66,7 @@ Menu::Menu() :
       {DB, "DB: \0", 4},
       {DB_INT, "DB Int: \0", 8},
       {FILE, "\0", 0},
-      {FILE_INT, "File Int: \0", 10}
+      {FILE_INT, "Update: \0", 8}
     }
   }
 {}
@@ -117,6 +124,16 @@ void initDisplay() {
   display.drawCircle(13, 26, 5, WHITE);
   display.drawFastVLine(21, 0, 32, WHITE);
   display.display();
+
+  char tempArray[16];
+  sprintf(tempArray,"%u.%u.%u.%u", server[0], server[1], server[2], server[3]);
+  menuData.updateValue(Menu::DB, tempArray);
+
+  sprintf(tempArray, "%-dms", dbInterval);
+  menuData.updateValue(Menu::DB_INT, tempArray);
+
+  sprintf(tempArray, "%-dms", cardInterval);
+  menuData.updateValue(Menu::FILE_INT, tempArray);
 }
 
 
@@ -126,13 +143,15 @@ Atm_button infoBtn;
 
 Atm_led led;
 
+
+
 void setup() {
   led.begin(LED_BUILTIN);
 
   //TODO Add a timer and some code into the wifi machine to periodically update
   //wifi stats like RSSI.
-  //TODO Figure out whether logger or wifi machine should handle logging to DB.
   wifi.begin( ap_ssid, ap_password )
+
     .onChange( true, [] ( int idx, int v, int up ) {
       menuData.updateValue(Menu::SSID, wifi.ssid());
 
@@ -149,6 +168,7 @@ void setup() {
       Serial.print( "Connected to Wifi, @ " );
       Serial.println( wifi.ip() );
     })
+
     .onChange( false, [] ( int idx, int v, int up ) {
       menuData.updateValue(Menu::IP, "");
       menuData.updateValue(Menu::SSID, "");
@@ -157,59 +177,68 @@ void setup() {
     })
     .start();
 
-  logger.begin(currentLoopPin, pumpRelayPin, cardInterval, dbInterval)
+
+
+
+  logger.begin(currentLoopPin, pumpRelayPin, cardInterval, dbInterval / cardInterval, server)
+
     .onStart([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
       display.display();
       led.on();
 
-      char cardIntStr[13];
-      sprintf(cardIntStr, "%-dms", cardInterval);
-      menuData.updateValue(Menu::FILE_INT, cardIntStr);
       menuData.updateValue(Menu::FILE, logger.getFilename());
-
-      Serial.println("Started");
     })
+
     .onStop([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, BLACK);   //Erase "stop" rectangle
       display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE); //Draw "play" triangle
       led.off();
 
       menuData.updateValue(Menu::FILE, "(no file)");
-      menuData.updateValue(Menu::COND, "");
-      menuData.updateValue(Menu::RELAY, "");
-
-      Serial.println("Stopped");
     })
+
     .onUpdate([](int idx, int v, int up){
       // Can't get consistent results using sprintf with floats, so using this
       // hacky workaround. Returns a float with two decimal points of precision.
       // char[8] will fit up to 4 digits to the left of the decimal.
+
+      // >>>Raw analog reading<<<
+      // sprintf(result, "%d.%02d", (int)logger.lastAnalogValue, (int)(logger.lastAnalogValue * 100) % 100);
+      // menuData.updateValue(Menu::COND, result);
+
       char result[8] = "";
-      sprintf(result, "%d.%d", (int)logger.lastAnalogValue, (int)(logger.lastAnalogValue * 100) % 100);
+      sprintf(result, "%d.%03d", (int)logger.lastCondValue, (unsigned int)(logger.lastCondValue * 1000) % 1000);
       menuData.updateValue(Menu::COND, result);
+
+      sprintf(result, "%d.%02d", (int)logger.lastRD15Value, (unsigned int)(logger.lastRD15Value * 100) % 100);
+      menuData.updateValue(Menu::RD15, result);
 
       menuData.updateValue(Menu::RELAY, logger.lastDigitalValue ? "Closed" : "Open");
 
-      Serial.print("Analog Value: ");
-      Serial.println(logger.lastAnalogValue);
-      Serial.print("Digital Value: ");
-      Serial.println(logger.lastDigitalValue);
-      Serial.print("Count: ");
-      Serial.println(v);
+      // Serial.print("Analog Value: ");
+      // Serial.println(logger.lastAnalogValue);
+      // Serial.print("Digital Value: ");
+      // Serial.println(logger.lastDigitalValue);
+      // Serial.print("Count: ");
+      // Serial.println(v);
     })
-    .onRecord([](int idx, int v, int up){
-      //TODO Add LED blink when value is written
 
-      if (v) {
-        //Write value to database.
-      }
+    .onRecord([](int idx, int v, int up){
+      led.blink(0, 10, 1)
+        .onFinish( led, led.EVT_ON )
+        .trigger(led.EVT_BLINK);
     });
+
+
+
 
   toggleBtn.begin(9)
     .onPress(logger, logger.EVT_TOGGLE);
   infoBtn.begin(5)
     .onPress(menu, menu.EVT_STEP);
+
+
 
   initDisplay();
   menu.begin();

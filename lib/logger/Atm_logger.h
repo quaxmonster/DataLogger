@@ -4,6 +4,11 @@
 #include <SPI.h>
 #include <SD.h>
 #include <RTClib.h>
+#include <WiFi101.h>
+
+const float COUNT_PER_VOLT = 4096. / 3.3;
+const float fitSlope = 5.9605;
+const float fitOffset = 6.;
 
 class RunningAverage {
   public:
@@ -37,10 +42,10 @@ class RunningAverage {
 class Atm_logger: public Machine {
 
  public:
-  enum { STOPPED, UPDATE, STARTING, STARTED, SD_RECORD, DB_RECORD }; // STATES
-  enum { EVT_TOGGLE, EVT_DB_TIMER, EVT_SD_TIMER, EVT_START, EVT_STOP, ELSE }; // EVENTS
+  enum { STOPPING, STOPPED, UPDATE, STARTING, STARTED, SD_RECORD, DB_RECORD }; // STATES
+  enum { EVT_TOGGLE, EVT_DB_COUNTER, EVT_UPDATE_TIMER, EVT_START, EVT_STOP, ELSE }; // EVENTS
   Atm_logger( void ) : Machine() {};
-  Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval, unsigned int DBInterval);
+  Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval, unsigned int DBInterval, IPAddress Server);
   Atm_logger& trace( Stream & stream );
   Atm_logger& trigger( int event );
   int state( void );
@@ -53,28 +58,33 @@ class Atm_logger: public Machine {
   Atm_logger& onUpdate( Machine& machine, int event = 0 );
   Atm_logger& onUpdate( atm_cb_push_t callback, int idx = 0 );
   Atm_logger& toggle( void );
+  Atm_logger& db_counter( void );
+  Atm_logger& update_timer( void );
   Atm_logger& start( void );
   Atm_logger& stop( void );
 
   float lastAnalogValue;
+  float lastCondValue;
+  float lastRD15Value;
   bool lastDigitalValue;
   DateTime lastTime;
 
   char* getFilename();
 
  private:
-  enum { ENT_STOPPED, LP_READ, ENT_UPDATE, ENT_STARTING, ENT_SD_RECORD, ENT_DB_RECORD }; // ACTIONS
+  enum { ENT_UPDATE, ENT_STARTING, LP_READ, ENT_SD_RECORD, ENT_DB_RECORD, ENT_STOPPING }; // ACTIONS
   enum { ON_RECORD, ON_START, ON_STOP, ON_UPDATE, CONN_MAX }; // CONNECTORS
   atm_connector connectors[CONN_MAX];
   int event( int id );
   void action( int id );
 
   int _analogPin, _digitalPin;
-  atm_timer_millis _timer_db;
-  atm_timer_millis _timer_sd;
+  atm_counter _db_counter;
+  atm_timer_millis _update_timer;
   RunningAverage _analogValue;
   unsigned int _cardInterval;
-  unsigned int _dbInterval;
+  unsigned int _dbCount;
+  IPAddress _server;
   char _filename[13];
   File _logFile;
   void getNextLogFile();
@@ -88,33 +98,37 @@ Automaton::ATML::begin - Automaton Markup Language
 <machines>
   <machine name="Atm_logger">
     <states>
-      <STOPPED index="0" on_enter="ENT_STOPPED" on_loop="LP_STOPPED">
+      <STOPPING index="0" on_enter="ENT_STOPPING">
+        <ELSE>STOPPED</ELSE>
+      </STOPPING>
+      <STOPPED index="1" on_loop="LP_READ">
         <EVT_TOGGLE>STARTING</EVT_TOGGLE>
+        <EVT_UPDATE_TIMER>UPDATE</EVT_UPDATE_TIMER>
         <EVT_START>STARTING</EVT_START>
       </STOPPED>
-      <UPDATE index="1" on_enter="ENT_UPDATE">
+      <UPDATE index="2" on_enter="ENT_UPDATE">
         <ELSE>STOPPED</ELSE>
       </UPDATE>
-      <STARTING index="2" on_enter="ENT_STARTING">
+      <STARTING index="3" on_enter="ENT_STARTING">
         <ELSE>STARTED</ELSE>
       </STARTING>
-      <STARTED index="3" on_loop="LP_STARTED">
-        <EVT_TOGGLE>STOPPED</EVT_TOGGLE>
-        <EVT_DB_TIMER>DB_RECORD</EVT_DB_TIMER>
-        <EVT_SD_TIMER>SD_RECORD</EVT_SD_TIMER>
-        <EVT_STOP>STOPPED</EVT_STOP>
+      <STARTED index="4" on_loop="LP_READ">
+        <EVT_TOGGLE>STOPPING</EVT_TOGGLE>
+        <EVT_DB_COUNTER>DB_RECORD</EVT_DB_COUNTER>
+        <EVT_UPDATE_TIMER>SD_RECORD</EVT_UPDATE_TIMER>
+        <EVT_STOP>STOPPING</EVT_STOP>
       </STARTED>
-      <SD_RECORD index="4" on_enter="ENT_SD_RECORD">
+      <SD_RECORD index="5" on_enter="ENT_SD_RECORD">
         <ELSE>STARTED</ELSE>
       </SD_RECORD>
-      <DB_RECORD index="5" on_enter="ENT_DB_RECORD">
+      <DB_RECORD index="6" on_enter="ENT_DB_RECORD">
         <ELSE>STARTED</ELSE>
       </DB_RECORD>
     </states>
     <events>
       <EVT_TOGGLE index="0" access="PUBLIC"/>
-      <EVT_DB_TIMER index="1" access="PRIVATE"/>
-      <EVT_SD_TIMER index="2" access="PRIVATE"/>
+      <EVT_DB_COUNTER index="1" access="MIXED"/>
+      <EVT_UPDATE_TIMER index="2" access="MIXED"/>
       <EVT_START index="3" access="PUBLIC"/>
       <EVT_STOP index="4" access="PUBLIC"/>
     </events>
