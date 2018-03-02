@@ -12,13 +12,13 @@ const byte menuPages = 3;
 const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
-const unsigned int dbInterval = 1000 * 60; //1 minute
-char ap_ssid[] = "whiteface1";
-char ap_password[] = "secondnaturestudios";
+const unsigned int dbInterval = 1000 * 15; //1 minute
+char ap_ssid[] = "AdaloggerTest";
+char ap_password[] = "Adafruit";
 // if you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-IPAddress server(10, 0, 42, 42);  // numeric IP for server (no DNS)
-//char server[] = "ofweb.srs.is.keysight.com";    // name address for server (using DNS)
+//IPAddress server(10, 0, 42, 42);  // numeric IP for server (no DNS)
+char server[] = "ofweb.srs.is.keysight.com";    // name address for server (using DNS)
 
 
 Atm_logger logger;

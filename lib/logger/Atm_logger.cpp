@@ -9,7 +9,7 @@ WiFiClient client;
 
  Atm_logger& Atm_logger::begin(
    int AnalogPin, int DigitalPin,
-   unsigned int CardInterval, unsigned int DBCount, IPAddress Server) {
+   unsigned int CardInterval, unsigned int DBCount, const char* Server) {
   //TODO Add counter or something to know when to log to web.
   // clang-format off
   const static state_t state_table[] PROGMEM = {
@@ -63,7 +63,7 @@ void Atm_logger::action( int id ) {
   switch ( id ) {
     case ENT_STOPPING: {
       SD.end();
-      client.stop();
+      //client.stop();
       push( connectors, ON_STOP, 0, 0, 0 );
       return;
     }
@@ -138,14 +138,24 @@ void Atm_logger::action( int id ) {
       _db_counter.decrement();
 
       if (_db_counter.expired()) {
-        if (!client.connected()) client.connect(_server, 80);
+        if (client.connect(_server, 80)) {
+          // Make an HTTP request:
+          client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
+          client.print(lastCondValue);
+          client.print("&conc=");
+          client.print(lastRD15Value);
+          client.print("&pumpState=");
+          client.print(lastDigitalValue ? '1' : '0');
+          client.println(" HTTP/1.1");
 
-        Serial.println("Connected to server!");
-        // Make an HTTP request:
-        // client.println("GET /search?q=arduino HTTP/1.1");
-        // client.println("Host: www.google.com");
-        // client.println("Connection: close");
-        client.println();
+          client.print("Host: ");
+          client.println(_server);
+
+          client.println("Connection: close");
+          client.println();
+
+          client.stop();
+        }
 
         _db_counter.set(_dbCount);
       }
