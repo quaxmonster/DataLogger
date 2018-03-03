@@ -53,7 +53,7 @@ Menu::Menu() :
   menuItems
   {
     {
-      {IP, "IP: \0", 4},
+      {IP, "IP: Connecting\0", 4},
       {SSID, "SSID: \0", 6},
       {RSSI, "RSSI: \0", 6}
     },
@@ -116,8 +116,10 @@ void initDisplay() {
 
   display.drawChar(0, 1, 'A', WHITE, BLACK, 1);
   display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE);
-  //display.drawChar(0, 11, 'B', WHITE, BLACK, 1);
-  //display.fillRect(11, 12, 5, 5, WHITE);
+  display.drawChar(0, 11, 'B', WHITE, BLACK, 1);
+  display.drawFastVLine(10, 13, 3, WHITE);
+  display.drawFastVLine(13, 12, 5, WHITE);
+  display.drawFastVLine(16, 11, 7, WHITE);
   display.drawChar(0, 23, 'C', WHITE, BLACK, 1);
   display.drawChar(11, 23, 'i', WHITE, BLACK, 1);
   display.drawCircle(13, 26, 5, WHITE);
@@ -138,7 +140,8 @@ void initDisplay() {
 
 
 // Init buttons and actions
-Atm_button toggleBtn;
+Atm_button toggleLogging;
+Atm_button toggleWiFi;
 Atm_button infoBtn;
 
 Atm_led led;
@@ -148,38 +151,18 @@ Atm_led led;
 void setup() {
   led.begin(LED_BUILTIN);
 
-  //TODO Add ability to batch updateValue calls to avoid redrawing multiple
-  //times when updating multiple values.
 
-  //TODO Add a timer and some code into the wifi machine to periodically update
-  //wifi stats like RSSI.
-  wifi.begin( ap_ssid, ap_password )
-
-    .onChange( true, [] ( int idx, int v, int up ) {
-      menuData.updateValue(Menu::SSID, wifi.getSSID());
-
-      char ipAddress[16];
-      IPAddress ip = wifi.ip();
-      sprintf(ipAddress,"%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-      menuData.updateValue(Menu::IP, ipAddress);
-
-      char rssiChar[4];
-      int rssi = wifi.rssi();
-      sprintf(rssiChar, "%-d", rssi);
-      menuData.updateValue(Menu::RSSI, rssiChar);
-
-      display.display();
-    })
-
-    .onChange( false, [] ( int idx, int v, int up ) {
-      menuData.updateValue(Menu::IP, "");
-      menuData.updateValue(Menu::SSID, "");
-      menuData.updateValue(Menu::RSSI, "");
-
-      display.display();
-    })
-    .start();
-
+  initDisplay();
+  menu.begin();
+  //TODO If I get around to making an intelligent menu class, I can dynamically
+  //build this series of `menu.onStep` instructions based on how many screens
+  //the menu class contains using a for loop or something.
+  //
+  //EVEN BETTER!! Incorporate menuData into this step machine.
+  menu.onStep(0, drawMenu);
+  menu.onStep(1, drawMenu);
+  menu.onStep(2, drawMenu);
+  menu.trigger( menu.EVT_STEP );
 
 
 
@@ -239,26 +222,60 @@ void setup() {
     });
 
 
+    //TODO Add a timer and some code into the wifi machine to periodically update
+    //wifi stats like RSSI.
+    wifi.begin( ap_ssid, ap_password )
+
+      .onConnect([] ( int idx, int v, int up ) {
+        menuData.updateValue(Menu::SSID, wifi.getSSID());
+        Serial.println("Connected to SSID ");
+        Serial.println(WiFi.SSID());
+
+        char ipAddress[16];
+        IPAddress ip = wifi.ip();
+        sprintf(ipAddress,"%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        menuData.updateValue(Menu::IP, ipAddress);
+
+        char rssiChar[4];
+        int rssi = wifi.rssi();
+        sprintf(rssiChar, "%-d", rssi);
+        menuData.updateValue(Menu::RSSI, rssiChar);
+
+        display.display();
+      })
+
+      .onDisconnect([] ( int idx, int v, int up ) {
+        menuData.updateValue(Menu::IP, "");
+        menuData.updateValue(Menu::SSID, "");
+        menuData.updateValue(Menu::RSSI, "");
+
+        display.display();
+      })
+
+      .onEnable([] ( int idx, int v, int up ) {
+        display.fillRect(9, 11, 9, 7, BLACK);
+        display.drawFastVLine(10, 13, 3, WHITE);
+        display.drawFastVLine(13, 12, 5, WHITE);
+        display.drawFastVLine(16, 11, 7, WHITE);
+        menuData.updateValue(Menu::IP, "Connecting");
+        display.display();
+      })
+
+      .onDisable([] ( int idx, int v, int up ) {
+        display.drawLine(9, 17, 17, 11, WHITE);
+        display.display();
+      })
+
+      .toggle();
 
 
-  toggleBtn.begin(9)
+  toggleLogging.begin(9)
     .onPress(logger, logger.EVT_TOGGLE);
+  toggleWiFi.begin(6)
+    .onPress(wifi, wifi.EVT_TOGGLE);
   infoBtn.begin(5)
     .onPress(menu, menu.EVT_STEP);
 
-
-
-  initDisplay();
-  menu.begin();
-  //TODO If I get around to making an intelligent menu class, I can dynamically
-  //build this series of `menu.onStep` instructions based on how many screens
-  //the menu class contains using a for loop or something.
-  //
-  //EVEN BETTER!! Incorporate menuData into this step machine.
-  menu.onStep(0, drawMenu);
-  menu.onStep(1, drawMenu);
-  menu.onStep(2, drawMenu);
-  menu.trigger( menu.EVT_STEP );
 }
 
 void loop() {
