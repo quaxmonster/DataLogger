@@ -43,8 +43,8 @@ class RunningAverage {
 class Atm_logger: public Machine {
 
  public:
-  enum { STOPPING, STOPPED, UPDATE, STARTING, STARTED, SD_RECORD, DB_RECORD }; // STATES
-  enum { EVT_TOGGLE, EVT_DB_COUNTER, EVT_UPDATE_TIMER, EVT_START, EVT_STOP, ELSE }; // EVENTS
+  enum { STOPPING, STOPPED, UPDATE, STARTING, STARTED, SD_RECORD }; // STATES
+  enum { EVT_TOGGLE, EVT_UPDATE_TIMER, EVT_START, EVT_STOP, ELSE }; // EVENTS
   Atm_logger( void ) : Machine() {};
   Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval, unsigned int DBInterval, IPAddress Server);
   Atm_logger& trace( Stream & stream );
@@ -74,7 +74,7 @@ class Atm_logger: public Machine {
   char* getFilename();
 
  private:
-  enum { ENT_UPDATE, ENT_STARTING, LP_READ, ENT_SD_RECORD, ENT_DB_RECORD, ENT_STOPPING }; // ACTIONS
+  enum { ENT_UPDATE, ENT_STARTING, LP_READ, ENT_SD_RECORD, ENT_STOPPING }; // ACTIONS
   enum { ON_RECORD, ON_START, ON_STOP, ON_UPDATE, CONN_MAX }; // CONNECTORS
   atm_connector connectors[CONN_MAX];
   int event( int id );
@@ -116,20 +116,15 @@ Automaton::ATML::begin - Automaton Markup Language
       </STARTING>
       <STARTED index="4" on_loop="LP_READ">
         <EVT_TOGGLE>STOPPING</EVT_TOGGLE>
-        <EVT_DB_COUNTER>DB_RECORD</EVT_DB_COUNTER>
         <EVT_UPDATE_TIMER>SD_RECORD</EVT_UPDATE_TIMER>
         <EVT_STOP>STOPPING</EVT_STOP>
       </STARTED>
       <SD_RECORD index="5" on_enter="ENT_SD_RECORD">
         <ELSE>STARTED</ELSE>
       </SD_RECORD>
-      <DB_RECORD index="6" on_enter="ENT_DB_RECORD">
-        <ELSE>STARTED</ELSE>
-      </DB_RECORD>
     </states>
     <events>
       <EVT_TOGGLE index="0" access="PUBLIC"/>
-      <EVT_DB_COUNTER index="1" access="MIXED"/>
       <EVT_UPDATE_TIMER index="2" access="MIXED"/>
       <EVT_START index="3" access="PUBLIC"/>
       <EVT_STOP index="4" access="PUBLIC"/>

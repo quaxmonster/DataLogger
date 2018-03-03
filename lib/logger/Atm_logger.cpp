@@ -13,14 +13,13 @@ WiFiClient client;
   //TODO Add counter or something to know when to log to web.
   // clang-format off
   const static state_t state_table[] PROGMEM = {
-    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_TOGGLE  EVT_DB_COUNTER  EVT_UPDATE_TIMER  EVT_START  EVT_STOP     ELSE */
-    /*  STOPPING */  ENT_STOPPING,         -1,      -1,         -1,             -1,               -1,        -1,       -1, STOPPED,
-    /*   STOPPED */            -1,    LP_READ,      -1,   STARTING,             -1,           UPDATE,  STARTING,       -1,      -1,
-    /*    UPDATE */    ENT_UPDATE,         -1,      -1,         -1,             -1,               -1,        -1,       -1, STOPPED,
-    /*  STARTING */  ENT_STARTING,         -1,      -1,         -1,             -1,               -1,        -1,       -1, STARTED,
-    /*   STARTED */            -1,    LP_READ,      -1,   STOPPING,      DB_RECORD,        SD_RECORD,        -1, STOPPING,      -1,
-    /* SD_RECORD */ ENT_SD_RECORD,         -1,      -1,         -1,             -1,               -1,        -1,       -1, STARTED,
-    /* DB_RECORD */ ENT_DB_RECORD,         -1,      -1,         -1,             -1,               -1,        -1,       -1, STARTED,
+    /*                   ON_ENTER     ON_LOOP  ON_EXIT  EVT_TOGGLE  EVT_UPDATE_TIMER  EVT_START  EVT_STOP     ELSE */
+    /*  STOPPING */  ENT_STOPPING,         -1,      -1,         -1,              -1,        -1,       -1, STOPPED,
+    /*   STOPPED */            -1,    LP_READ,      -1,   STARTING,          UPDATE,  STARTING,       -1,      -1,
+    /*    UPDATE */    ENT_UPDATE,         -1,      -1,         -1,              -1,        -1,       -1, STOPPED,
+    /*  STARTING */  ENT_STARTING,         -1,      -1,         -1,              -1,        -1,       -1, STARTED,
+    /*   STARTED */            -1,    LP_READ,      -1,   STOPPING,       SD_RECORD,        -1, STOPPING,      -1,
+    /* SD_RECORD */ ENT_SD_RECORD,         -1,      -1,         -1,              -1,        -1,       -1, STARTED,
   };
   // clang-format on
   Machine::begin( state_table, ELSE );
@@ -41,8 +40,6 @@ WiFiClient client;
 
 int Atm_logger::event( int id ) {
   switch ( id ) {
-    case EVT_DB_COUNTER:
-      return _db_counter.expired();
     case EVT_UPDATE_TIMER:
       return _update_timer.expired(this);
   }
@@ -63,13 +60,11 @@ void Atm_logger::action( int id ) {
   switch ( id ) {
     case ENT_STOPPING: {
       SD.end();
-      client.stop();
       push( connectors, ON_STOP, 0, 0, 0 );
       return;
     }
 
     case ENT_UPDATE: {
-      //lastTime = rtc.now();
       lastAnalogValue = _analogValue.average();
       lastCondValue = (((lastAnalogValue / COUNT_PER_VOLT) / 165.) - 0.04) * 687.5;
       lastRD15Value = lastCondValue * fitSlope + fitOffset;
@@ -80,7 +75,10 @@ void Atm_logger::action( int id ) {
     }
 
     case ENT_STARTING: {
+      Serial.println("Atm_logger::Getting ready to start, getting next available log file.");
       getNextLogFile();   //Find next available serial number for file to record dataXXXX.csv
+      Serial.print("Atm_logger::Log file is ");
+      Serial.println(_filename);
       _analogValue.reset();
       _db_counter.set(_dbCount);
 
@@ -93,8 +91,8 @@ void Atm_logger::action( int id ) {
 
         char result[18];
 
-        Serial.println("Updating system time before starting.");
-        Serial.print("Old system time was ");
+        Serial.println("Atm_logger::Updating system time before starting.");
+        Serial.print("Atm_logger::Old system time was ");
         sprintf(result, "%u/%u/%u %02u:%02u:%02u",
                         oldTime.month(),
                         oldTime.day(),
@@ -104,7 +102,7 @@ void Atm_logger::action( int id ) {
                         oldTime.second());
         Serial.println(result);
 
-        Serial.print("New system time is ");
+        Serial.print("Atm_logger::New system time is ");
         sprintf(result, "%u/%u/%u %02u:%02u:%02u",
                         serverTime.month(),
                         serverTime.day(),
@@ -113,6 +111,8 @@ void Atm_logger::action( int id ) {
                         serverTime.minute(),
                         serverTime.second());
         Serial.println(result);
+      } else {
+        Serial.println("Atm_logger::Couldn't update system time because WiFi is disconnected.");
       }
 
       startedTime = rtc.now();
@@ -169,25 +169,31 @@ void Atm_logger::action( int id ) {
 
       _db_counter.decrement();
 
-      if (_db_counter.expired() && WiFi.status() == WL_CONNECTED) {
+      if (_db_counter.expired()) {
+        if (WiFi.status() == WL_CONNECTED) {
+          Serial.println("Atm_logger::Attempting to send to database.");
+          Serial.print("Atm_logger::client connection returned ");
+          Serial.println(client.connect(_server, 80));
+          // Make an HTTP request:
+          //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
+          client.print("GET /dataLogger.php?cond=");
+          client.print(lastCondValue);
+          client.print("&conc=");
+          client.print(lastRD15Value);
+          client.print("&pumpState=");
+          client.print(lastDigitalValue ? '1' : '0');
+          client.println(" HTTP/1.1");
+          client.print("Host: ");
+          client.println(_server);
+          client.println("Connection: close");
+          client.println();
 
-        client.connect(_server, 80);
-        // Make an HTTP request:
-        //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
-        client.print("GET /dataLogger.php?cond=");
-        client.print(lastCondValue);
-        client.print("&conc=");
-        client.print(lastRD15Value);
-        client.print("&pumpState=");
-        client.print(lastDigitalValue ? '1' : '0');
-        client.println(" HTTP/1.1");
-        client.print("Host: ");
-        client.println(_server);
-        client.println("Connection: close");
-        client.println();
-
-        client.stop();
-
+          client.stop();
+          Serial.println("Atm_logger::Client stopped.");
+        } else {
+          Serial.println("Atm_logger::Couldn't write to database because WiFi was disconnected.");
+        }
+        
         _db_counter.set(_dbCount);
       }
 
@@ -196,10 +202,6 @@ void Atm_logger::action( int id ) {
 
       //Move this before the push connectors once _count benchmarking isn't needed anymore.
       _analogValue.reset();
-      return;
-    }
-
-    case ENT_DB_RECORD: {
       return;
     }
   }
@@ -248,6 +250,8 @@ void Atm_logger::getNextLogFile() {
       _logFile.println("Time,Value,Conductivity,RD15,Pump State");
       _logFile.close();
     }
+  } else {
+    Serial.println("Atm_logger::Couldn't initialize SD card.");
   }
 }
 
@@ -261,11 +265,6 @@ void Atm_logger::getNextLogFile() {
 
 Atm_logger& Atm_logger::toggle() {
   trigger( EVT_TOGGLE );
-  return *this;
-}
-
-Atm_logger& Atm_logger::db_counter() {
-  trigger( EVT_DB_COUNTER );
   return *this;
 }
 

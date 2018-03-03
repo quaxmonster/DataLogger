@@ -181,14 +181,22 @@ void setup() {
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
       menuData.updateValue(Menu::FILE, logger.getFilename());
 
-      char result[17];
+      char result[18];
       sprintf(result, "Start %u/%u %02u:%02u", logger.startedTime.month(), logger.startedTime.day(), logger.startedTime.hour(), logger.startedTime.minute());
       menuData.updateValue(Menu::START_TIME, result);
       display.display();
 
       led.on();
 
-      Serial.println("Logging started.");
+      Serial.print("Logging started at ");
+      sprintf(result, "%u/%u/%u %02u:%02u:%02u",
+                      logger.startedTime.month(),
+                      logger.startedTime.day(),
+                      logger.startedTime.year(),
+                      logger.startedTime.hour(),
+                      logger.startedTime.minute(),
+                      logger.startedTime.second());
+      Serial.println(result);
     })
 
     .onStop([](int idx, int v, int up){
@@ -226,8 +234,8 @@ void setup() {
       // Serial.println(logger.lastAnalogValue);
       // Serial.print("Digital Value: ");
       // Serial.println(logger.lastDigitalValue);
-      Serial.print("Sample Count: ");
-      Serial.println(v);
+      // Serial.print("Sample Count: ");
+      // Serial.println(v);
     })
 
     .onRecord([](int idx, int v, int up){
@@ -255,6 +263,8 @@ void setup() {
         menuData.updateValue(Menu::RSSI, rssiChar);
 
         display.display();
+
+        Serial.println("WiFi connected.");
       })
 
       .onDisconnect([] ( int idx, int v, int up ) {
@@ -263,6 +273,8 @@ void setup() {
         menuData.updateValue(Menu::RSSI, "");
 
         display.display();
+
+        Serial.println("WiFi connection lost.");
       })
 
       .onEnable([] ( int idx, int v, int up ) {
