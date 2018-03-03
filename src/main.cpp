@@ -12,13 +12,13 @@ const byte menuPages = 3;
 const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
-const unsigned int dbInterval = 1000 * 15; //1 minute
+const unsigned int dbInterval = 1000 * 30; //1 minute
 const char ap_ssid[] = "AdaloggerTest";
 const char ap_password[] = "Adafruit";
 // if you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-//IPAddress server(10, 0, 42, 42);  // numeric IP for server (no DNS)
-char server[] = "ofweb.srs.is.keysight.com";    // name address for server (using DNS)
+IPAddress server(10, 0, 42, 6);  // numeric IP for server (no DNS)
+//const char server[] = "ofweb.srs.is.keysight.com";    // name address for server (using DNS)
 
 
 Atm_logger logger;
@@ -53,20 +53,20 @@ Menu::Menu() :
   menuItems
   {
     {
-      {IP, "IP: Connecting\0", 4},
-      {SSID, "SSID: \0", 6},
-      {RSSI, "RSSI: \0", 6}
+      {IP, "IP Connecting\0", 2},
+      {SSID, "SSID \0", 5},
+      {RSSI, "RSSI \0", 5}
     },
     {
-      {COND, "Cond: \0", 6},
-      {RD15, "RD15\%: \0", 7},
-      {RELAY, "Relay: \0", 7}
+      {COND, "Cond \0", 5},
+      {RD15, "RD15\% \0", 6},
+      {RELAY, "Relay \0", 6}
     },
     {
-      {DB, "DB: \0", 4},
-      {DB_INT, "DB Int: \0", 8},
+      {DB, "DB \0", 3},
+      {DB_INT, "DB Int \0", 7},
       {FILE, "\0", 0},
-      {FILE_INT, "Update: \0", 8}
+      {FILE_INT, "Update \0", 7}
     }
   }
 {}
@@ -257,7 +257,7 @@ void setup() {
         display.drawFastVLine(10, 13, 3, WHITE);
         display.drawFastVLine(13, 12, 5, WHITE);
         display.drawFastVLine(16, 11, 7, WHITE);
-        menuData.updateValue(Menu::IP, "Connecting");
+        menuData.updateValue(Menu::IP, " Connecting");
         display.display();
       })
 
