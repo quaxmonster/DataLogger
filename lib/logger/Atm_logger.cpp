@@ -155,11 +155,14 @@ void Atm_logger::action( int id ) {
         client.println(_server);
 
         client.println();
-        client.println();
-        client.flush();
 
-        Serial.print("Sent request. Connection status is ");
-        Serial.println(client.connected());
+        Serial.print("Sent request. Reply is ");
+        while (client.available()) {
+          char c = client.read();
+          Serial.write(c);
+        }
+
+        //client.flush();
 
         _db_counter.set(_dbCount);
       }
