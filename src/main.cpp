@@ -3,12 +3,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Automaton.h>
+#include <RTClib.h>
 #include "Atm_logger.h"
 #include "Atm_atwinc1500.h"
 
 const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
-const byte menuPages = 3;
+const byte menuPages = 4;
 const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
@@ -32,7 +33,7 @@ Atm_step menu;
 
 class Menu {
 public:
-  enum ItemName {IP, SSID, RSSI, COND, RD15, RELAY, DB, DB_INT, FILE, FILE_INT};
+  enum ItemName {NETWORK_INFO, IP, SSID, RSSI, SENSOR_INFO, COND, RD15, RELAY, DB_INFO, DB_ADDR, DB_INT, SESSION, FILE, START_TIME, UPDATE_FREQ};
   Menu();
 private:
   struct MenuItem {
@@ -53,20 +54,27 @@ Menu::Menu() :
   menuItems
   {
     {
+      {NETWORK_INFO, "**Network Stats**", 17},
       {IP, "IP Connecting\0", 2},
       {SSID, "SSID \0", 5},
       {RSSI, "RSSI \0", 5}
     },
     {
+      {SENSOR_INFO, "**Sensor Stats***", 17},
       {COND, "Cond \0", 5},
       {RD15, "RD15\% \0", 6},
       {RELAY, "Relay \0", 6}
     },
     {
-      {DB, "DB \0", 3},
-      {DB_INT, "DB Int \0", 7},
+      {DB_INFO, "**Database Info**", 17},
+      {DB_ADDR, "\0", 0},
+      {DB_INT, "Interval \0", 9},
+    },
+    {
+      {SESSION, "**Session Info***", 17},
       {FILE, "\0", 0},
-      {FILE_INT, "Update \0", 7}
+      {START_TIME, "Not Started \0", 0},
+      {UPDATE_FREQ, "Update \0", 7}
     }
   }
 {}
@@ -127,13 +135,13 @@ void initDisplay() {
 
   char tempArray[16];
   sprintf(tempArray,"%u.%u.%u.%u", server[0], server[1], server[2], server[3]);
-  menuData.updateValue(Menu::DB, tempArray);
+  menuData.updateValue(Menu::DB_ADDR, tempArray);
 
   sprintf(tempArray, "%-dms", dbInterval);
   menuData.updateValue(Menu::DB_INT, tempArray);
 
   sprintf(tempArray, "%-dms", cardInterval);
-  menuData.updateValue(Menu::FILE_INT, tempArray);
+  menuData.updateValue(Menu::UPDATE_FREQ, tempArray);
 
   display.display();
 }
@@ -162,6 +170,7 @@ void setup() {
   menu.onStep(0, drawMenu);
   menu.onStep(1, drawMenu);
   menu.onStep(2, drawMenu);
+  menu.onStep(3, drawMenu);
   menu.trigger( menu.EVT_STEP );
 
 
@@ -172,19 +181,25 @@ void setup() {
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
       menuData.updateValue(Menu::FILE, logger.getFilename());
 
+      char result[17];
+      sprintf(result, "Start %u/%u %02u:%02u", logger.startedTime.month(), logger.startedTime.day(), logger.startedTime.hour(), logger.startedTime.minute());
+      menuData.updateValue(Menu::START_TIME, result);
       display.display();
 
       led.on();
+
+      Serial.println("Logging started.");
     })
 
     .onStop([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, BLACK);   //Erase "stop" rectangle
       display.fillTriangle(11, 2, 11, 6, 15, 2+(6-2)/2, WHITE); //Draw "play" triangle
+      menuData.updateValue(Menu::FILE, "(no file)");
+      display.display();
+
       led.off();
 
-      menuData.updateValue(Menu::FILE, "(no file)");
-
-      display.display();
+      Serial.println("Logging stopped.");
     })
 
     .onUpdate([](int idx, int v, int up){
@@ -211,8 +226,8 @@ void setup() {
       // Serial.println(logger.lastAnalogValue);
       // Serial.print("Digital Value: ");
       // Serial.println(logger.lastDigitalValue);
-      // Serial.print("Count: ");
-      // Serial.println(v);
+      Serial.print("Sample Count: ");
+      Serial.println(v);
     })
 
     .onRecord([](int idx, int v, int up){

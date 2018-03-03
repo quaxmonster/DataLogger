@@ -80,10 +80,42 @@ void Atm_logger::action( int id ) {
     }
 
     case ENT_STARTING: {
-      getNextLogFile();
-      client.connect(_server, 80);
+      getNextLogFile();   //Find next available serial number for file to record dataXXXX.csv
       _analogValue.reset();
       _db_counter.set(_dbCount);
+
+      if (WiFi.status() == WL_CONNECTED) {
+
+        DateTime oldTime = rtc.now();
+        DateTime serverTime = DateTime(WiFi.getTime());
+        serverTime = serverTime + TimeSpan(0, GMT_OFFSET, 0, 0);  //Subtract time zone offset
+        rtc.adjust(serverTime);
+
+        char result[18];
+
+        Serial.println("Updating system time before starting.");
+        Serial.print("Old system time was ");
+        sprintf(result, "%u/%u/%u %02u:%02u:%02u",
+                        oldTime.month(),
+                        oldTime.day(),
+                        oldTime.year(),
+                        oldTime.hour(),
+                        oldTime.minute(),
+                        oldTime.second());
+        Serial.println(result);
+
+        Serial.print("New system time is ");
+        sprintf(result, "%u/%u/%u %02u:%02u:%02u",
+                        serverTime.month(),
+                        serverTime.day(),
+                        serverTime.year(),
+                        serverTime.hour(),
+                        serverTime.minute(),
+                        serverTime.second());
+        Serial.println(result);
+      }
+
+      startedTime = rtc.now();
       push( connectors, ON_START, 0, 0, 0 );
       return;
     }
@@ -138,11 +170,8 @@ void Atm_logger::action( int id ) {
       _db_counter.decrement();
 
       if (_db_counter.expired() && WiFi.status() == WL_CONNECTED) {
-        if (!client.connected()) {
-          client.stop();
-          client.connect(_server, 80);
-        }
 
+        client.connect(_server, 80);
         // Make an HTTP request:
         //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
         client.print("GET /dataLogger.php?cond=");
@@ -154,11 +183,10 @@ void Atm_logger::action( int id ) {
         client.println(" HTTP/1.1");
         client.print("Host: ");
         client.println(_server);
+        client.println("Connection: close");
         client.println();
 
-        while (client.available()) {
-          client.read();
-        }
+        client.stop();
 
         _db_counter.set(_dbCount);
       }

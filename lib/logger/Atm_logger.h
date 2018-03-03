@@ -6,6 +6,7 @@
 #include <RTClib.h>
 #include <WiFi101.h>
 
+const int GMT_OFFSET = -8;
 const float COUNT_PER_VOLT = 4096. / 3.3;
 const float fitSlope = 5.9605;
 const float fitOffset = 6.;
@@ -68,6 +69,7 @@ class Atm_logger: public Machine {
   float lastRD15Value;
   bool lastDigitalValue;
   DateTime lastTime;
+  DateTime startedTime;
 
   char* getFilename();
 
