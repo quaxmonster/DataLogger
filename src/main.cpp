@@ -12,7 +12,7 @@ const byte menuPages = 3;
 const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
-const unsigned int dbInterval = 1000 * 30; //1 minute
+const unsigned int dbInterval = 1000 * 15; //1 minute
 const char ap_ssid[] = "AdaloggerTest";
 const char ap_password[] = "Adafruit";
 // if you don't want to use DNS (and reduce your sketch size)
@@ -228,8 +228,6 @@ void setup() {
 
       .onConnect([] ( int idx, int v, int up ) {
         menuData.updateValue(Menu::SSID, wifi.getSSID());
-        Serial.println("Connected to SSID ");
-        Serial.println(WiFi.SSID());
 
         char ipAddress[16];
         IPAddress ip = wifi.ip();

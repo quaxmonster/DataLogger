@@ -138,9 +138,11 @@ void Atm_logger::action( int id ) {
       _db_counter.decrement();
 
       if (_db_counter.expired() && WiFi.status() == WL_CONNECTED) {
-        if (!client.connected()) client.connect(_server, 80);
+        if (!client.connected()) {
+          client.stop();
+          client.connect(_server, 80);
+        }
 
-        Serial.println(client.connected());
         // Make an HTTP request:
         //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
         client.print("GET /dataLogger.php?cond=");
@@ -150,12 +152,13 @@ void Atm_logger::action( int id ) {
         client.print("&pumpState=");
         client.print(lastDigitalValue ? '1' : '0');
         client.println(" HTTP/1.1");
-
         client.print("Host: ");
         client.println(_server);
-
         client.println();
-        client.flush();
+
+        while (client.available()) {
+          client.read();
+        }
 
         _db_counter.set(_dbCount);
       }
