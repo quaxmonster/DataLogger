@@ -172,28 +172,44 @@ void Atm_logger::action( int id ) {
       if (_db_counter.expired()) {
         if (WiFi.status() == WL_CONNECTED) {
           Serial.println("Atm_logger::Attempting to send to database.");
-          Serial.print("Atm_logger::client connection returned ");
-          Serial.println(client.connect(_server, 80));
-          // Make an HTTP request:
-          //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
-          client.print("GET /dataLogger.php?cond=");
-          client.print(lastCondValue);
-          client.print("&conc=");
-          client.print(lastRD15Value);
-          client.print("&pumpState=");
-          client.print(lastDigitalValue ? '1' : '0');
-          client.println(" HTTP/1.1");
-          client.print("Host: ");
-          client.println(_server);
-          client.println("Connection: close");
-          client.println();
 
-          client.stop();
-          Serial.println("Atm_logger::Client stopped.");
+          //TODO Find better way to send data than with GET
+          //TODO Incorporate non-blocking client.connect
+          if (client.connect(_server, 80)) {
+            Serial.println("Atm_logger::Connected to client.");
+            // Make an HTTP request:
+            //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
+            client.print("GET /dataLogger.php?cond=");
+            client.print(lastCondValue);
+            client.print("&conc=");
+            client.print(lastRD15Value);
+            client.print("&pumpState=");
+            client.print(lastDigitalValue ? '1' : '0');
+            client.println(" HTTP/1.1");
+            client.print("Host: ");
+            client.println(_server);
+            client.println("Connection: close");
+            client.println();
+
+            Serial.println("Atm_logger::Client response was: ");
+            while (client.connected()) {
+              char c;
+              if (client.available()) {
+                c = client.read();
+                Serial.print(c);
+              }
+            }
+
+            Serial.println();
+            client.stop();
+            Serial.println("Atm_logger::Client stopped.");
+          } else {
+            Serial.println("Atm_logger::Couldn't connect to client.");
+          }
         } else {
           Serial.println("Atm_logger::Couldn't write to database because WiFi was disconnected.");
         }
-        
+
         _db_counter.set(_dbCount);
       }
 
