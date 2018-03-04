@@ -171,12 +171,10 @@ void Atm_logger::action( int id ) {
 
       if (_db_counter.expired()) {
         if (WiFi.status() == WL_CONNECTED) {
-          Serial.println("Atm_logger::Attempting to send to database.");
 
           //TODO Find better way to send data than with GET
           //TODO Incorporate non-blocking client.connect
           if (client.connect(_server, 80)) {
-            Serial.println("Atm_logger::Connected to client.");
             // Make an HTTP request:
             //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
             client.print("GET /dataLogger.php?cond=");
@@ -191,18 +189,17 @@ void Atm_logger::action( int id ) {
             client.println("Connection: close");
             client.println();
 
-            Serial.println("Atm_logger::Client response was: ");
-            while (client.connected()) {
-              char c;
-              if (client.available()) {
-                c = client.read();
-                Serial.print(c);
-              }
-            }
+            //If you want the response from the server, you can uncomment this.
+            // Serial.println("Atm_logger::Client response was: ");
+            // while (client.connected()) {
+            //   char c;
+            //   if (client.available()) {
+            //     c = client.read();
+            //     Serial.print(c);
+            //   }
+            // }
 
-            Serial.println();
             client.stop();
-            Serial.println("Atm_logger::Client stopped.");
           } else {
             Serial.println("Atm_logger::Couldn't connect to client.");
           }
