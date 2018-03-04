@@ -13,7 +13,7 @@ const byte menuPages = 4;
 const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
-const unsigned int dbInterval = 1000 * 15; //1 minute
+const unsigned int dbInterval = 1000 * 60; //1 minute
 const char ap_ssid[] = "AdaloggerTest";
 const char ap_password[] = "Adafruit";
 // if you don't want to use DNS (and reduce your sketch size)
