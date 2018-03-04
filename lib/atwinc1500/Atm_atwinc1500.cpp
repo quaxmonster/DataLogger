@@ -17,9 +17,7 @@ Atm_atwinc1500& Atm_atwinc1500::begin(const char* ssid, const char* password) {
   // clang-format on
   Machine::begin( state_table, ELSE );
   WiFi.setPins(8,7,4,2);    //Configure pins for Feather M0
-  Serial.println("Atm_atwinc1500::Connecting to network...");
-  Serial.print("Atm_atwinc1500::Connection returned ");
-  Serial.println(WiFi.begin( ssid, password ));
+  WiFi.begin( ssid, password );
   _timer.set(5000);         //How long to wait before reattempting WiFi.begin()
   return *this;
 }

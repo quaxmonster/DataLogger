@@ -46,7 +46,7 @@ class Atm_logger: public Machine {
   enum { STOPPING, STOPPED, UPDATE, STARTING, STARTED, SD_RECORD }; // STATES
   enum { EVT_TOGGLE, EVT_UPDATE_TIMER, EVT_START, EVT_STOP, ELSE }; // EVENTS
   Atm_logger( void ) : Machine() {};
-  Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval, unsigned int DBInterval, IPAddress Server);
+  Atm_logger& begin(int AnalogPin, int DigitalPin, unsigned int CardInterval, unsigned int DBInterval, const char* Server);
   Atm_logger& trace( Stream & stream );
   Atm_logger& trigger( int event );
   int state( void );
@@ -86,7 +86,7 @@ class Atm_logger: public Machine {
   RunningAverage _analogValue;
   unsigned int _cardInterval;
   unsigned int _dbCount;
-  IPAddress _server;
+  const char* _server;
   char _filename[13];
   File _logFile;
   void getNextLogFile();

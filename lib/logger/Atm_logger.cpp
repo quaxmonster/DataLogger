@@ -9,7 +9,7 @@ WiFiClient client;
 
  Atm_logger& Atm_logger::begin(
    int AnalogPin, int DigitalPin,
-   unsigned int CardInterval, unsigned int DBCount, IPAddress Server) {
+   unsigned int CardInterval, unsigned int DBCount, const char* Server) {
   //TODO Add counter or something to know when to log to web.
   // clang-format off
   const static state_t state_table[] PROGMEM = {
@@ -176,8 +176,7 @@ void Atm_logger::action( int id ) {
           //TODO Incorporate non-blocking client.connect
           if (client.connect(_server, 80)) {
             // Make an HTTP request:
-            //client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
-            client.print("GET /dataLogger.php?cond=");
+            client.print("GET /org/pmtc/etchrTrackr/dataLogger.php?cond=");
             client.print(lastCondValue);
             client.print("&conc=");
             client.print(lastRD15Value);
