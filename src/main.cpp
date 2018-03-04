@@ -132,8 +132,8 @@ void initDisplay() {
   display.drawCircle(13, 26, 5, WHITE);
   display.drawFastVLine(21, 0, 32, WHITE);
 
-  char tempArray[16];
-  sprintf(tempArray,"%u.%u.%u.%u", server[0], server[1], server[2], server[3]);
+  char tempArray[18] = "";
+  strncpy(tempArray, server, 17);
   menuData.updateValue(Menu::DB_ADDR, tempArray);
 
   sprintf(tempArray, "%-dms", dbInterval);
