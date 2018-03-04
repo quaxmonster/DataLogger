@@ -102,7 +102,7 @@ void Atm_logger::action( int id ) {
                         oldTime.second());
         Serial.println(result);
 
-        Serial.print("Atm_logger::New system time is ");
+        Serial.print("Atm_logger::Server time is ");
         sprintf(result, "%u/%u/%u %02u:%02u:%02u",
                         serverTime.month(),
                         serverTime.day(),
@@ -358,6 +358,6 @@ Atm_logger& Atm_logger::onUpdate( atm_cb_push_t callback, int idx ) {
 
 Atm_logger& Atm_logger::trace( Stream & stream ) {
   Machine::setTrace( &stream, atm_serial_debug::trace,
-    "LOGGER\0EVT_TOGGLE\0EVT_DB_COUNTER\0EVT_UPDATE_TIMER\0EVT_START\0EVT_STOP\0ELSE\0STOPPING\0STOPPED\0UPDATE\0STARTING\0STARTED\0SD_RECORD\0DB_RECORD" );
+    "LOGGER\0EVT_TOGGLE\0EVT_UPDATE_TIMER\0EVT_START\0EVT_STOP\0ELSE\0STOPPING\0STOPPED\0UPDATE\0STARTING\0STARTED\0SD_RECORD" );
   return *this;
 }

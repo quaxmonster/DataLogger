@@ -265,7 +265,7 @@ void setup() {
         display.display();
 
         Serial.println("WiFi connected.");
-        
+
       })
 
       .onDisconnect([] ( int idx, int v, int up ) {
