@@ -66,8 +66,8 @@ void Atm_logger::action( int id ) {
 
     case ENT_UPDATE: {
       lastAnalogValue = _analogValue.average();
-      lastCondValue = (((lastAnalogValue / COUNT_PER_VOLT) / 165.) - 0.04) * 687.5;
-      lastRD15Value = lastCondValue * fitSlope + fitOffset;
+      lastCondValue = ((lastAnalogValue / COUNT_TO_AMPS) - 0.004) * AMPS_TO_COND + MIN_COND;
+      lastRD15Value = (lastCondValue - FIT_OFFSET) / FIT_SLOPE;
       lastDigitalValue = !digitalRead(_digitalPin);
       push( connectors, ON_UPDATE, 0, _analogValue._count, 0 );
       _analogValue.reset();
@@ -133,8 +133,8 @@ void Atm_logger::action( int id ) {
       // 165 is the value of the resistor, in ohms, used to convert voltage drop to current
       // 0.04 is the offset in amps of the current loop (4 mA is 'zero')
       // 687.5 converts from 4-20 mA to 0-110 milliSiemens
-      lastCondValue = (((lastAnalogValue / COUNT_PER_VOLT) / 165.) - 0.04) * 687.5;
-      lastRD15Value = lastCondValue * fitSlope + fitOffset;
+      lastCondValue = ((lastAnalogValue / COUNT_TO_AMPS) - 0.004) * AMPS_TO_COND + MIN_COND;
+      lastRD15Value = (lastCondValue - FIT_OFFSET) / FIT_SLOPE;
       lastDigitalValue = !digitalRead(_digitalPin);
 
       _logFile = SD.open(_filename, FILE_WRITE);
@@ -159,7 +159,7 @@ void Atm_logger::action( int id ) {
         _logFile.print(',');
         _logFile.print(lastAnalogValue);
         _logFile.print(',');
-        _logFile.print(lastCondValue);
+        _logFile.print(lastCondValue * 1000);
         _logFile.print(',');
         _logFile.print(lastRD15Value);
         _logFile.print(',');

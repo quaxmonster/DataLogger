@@ -7,9 +7,20 @@
 #include <WiFi101.h>
 
 const int GMT_OFFSET = -8;
-const float COUNT_PER_VOLT = 4096. / 3.3;
-const float fitSlope = 5.9605;
-const float fitOffset = 6.;
+
+const int MAX_COUNT = 4096;
+const float MAX_VOLT = 3.235;
+const int RESISTOR = 165;
+const int MAX_COND = 130;
+const int MIN_COND = 60;
+
+const float COUNT_TO_VOLT = (float)MAX_COUNT / MAX_VOLT;
+const float COUNT_TO_AMPS = COUNT_TO_VOLT * (float)RESISTOR;
+const float AMPS_TO_COND = (float)(MAX_COND - MIN_COND) / (.020-.004);
+
+
+const float FIT_SLOPE = 5.9605;
+const float FIT_OFFSET = 6.;
 
 class RunningAverage {
   public:

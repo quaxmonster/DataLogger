@@ -14,7 +14,7 @@ const byte menuRows = 4;
 const byte menuWidth = 17;
 const unsigned int cardInterval = 500;
 const unsigned int dbInterval = 1000 * 60; //1 minute
-const char ap_ssid[] = "CM-Net";
+const char ap_ssid[] = "Connectify-CM";
 const char ap_password[] = "chemmill";
 // You can enter IP address instead of domain name to reduce sketch size.
 //IPAddress server(10, 0, 42, 6);  // numeric IP for server (no DNS)
@@ -173,8 +173,8 @@ void setup() {
   menu.trigger( menu.EVT_STEP );
 
 
-
-  logger.begin(currentLoopPin, pumpRelayPin, cardInterval, dbInterval / cardInterval, server)
+  //Recording to SD takes some time, so add 88 ms to the cardInterval when determining dbInterval count
+  logger.begin(currentLoopPin, pumpRelayPin, cardInterval, dbInterval / (cardInterval + 88), server)
 
     .onStart([](int idx, int v, int up){
       display.fillRect(11, 2, 5, 5, WHITE);   //Draw "stop" rectangle icon
@@ -219,7 +219,7 @@ void setup() {
       // menuData.updateValue(Menu::COND, result);
 
       char result[8] = "";
-      sprintf(result, "%d.%03d", (int)logger.lastCondValue, (unsigned int)(logger.lastCondValue * 1000) % 1000);
+      sprintf(result, "%d.%.03d", (int)logger.lastCondValue, (unsigned int)(logger.lastCondValue * 1000) % 1000);
       menuData.updateValue(Menu::COND, result);
 
       sprintf(result, "%d.%02d", (int)logger.lastRD15Value, (unsigned int)(logger.lastRD15Value * 100) % 100);
