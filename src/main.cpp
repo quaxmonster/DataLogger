@@ -5,7 +5,6 @@
 #include <Automaton.h>
 #include <RTClib.h>
 #include "Atm_logger.h"
-#include "Atm_atwinc1500.h"
 
 const byte currentLoopPin = 1;
 const byte pumpRelayPin = 12;
@@ -22,7 +21,6 @@ const char server[] = "ofweb.srs.is.keysight.com";    // name address for server
 
 
 Atm_logger logger;
-Atm_atwinc1500 wifi;
 
 
 
@@ -243,61 +241,13 @@ void setup() {
         .trigger(led.EVT_BLINK);
     });
 
-
-    //TODO Add a timer and some code into the wifi machine to periodically update
-    //wifi stats like RSSI.
-    wifi.begin( ap_ssid, ap_password )
-
-      .onConnect([] ( int idx, int v, int up ) {
-        menuData.updateValue(Menu::SSID, wifi.getSSID());
-
-        char ipAddress[16];
-        IPAddress ip = wifi.ip();
-        sprintf(ipAddress,"%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-        menuData.updateValue(Menu::IP, ipAddress);
-
-        char rssiChar[4];
-        int rssi = wifi.rssi();
-        sprintf(rssiChar, "%-d", rssi);
-        menuData.updateValue(Menu::RSSI, rssiChar);
-
-        display.display();
-
-        Serial.println("WiFi connected.");
-
-      })
-
-      .onDisconnect([] ( int idx, int v, int up ) {
-        menuData.updateValue(Menu::IP, "");
-        menuData.updateValue(Menu::SSID, "");
-        menuData.updateValue(Menu::RSSI, "");
-
-        display.display();
-
-        Serial.println("WiFi connection lost.");
-      })
-
-      .onEnable([] ( int idx, int v, int up ) {
-        display.fillRect(9, 11, 9, 7, BLACK);
-        display.drawFastVLine(10, 13, 3, WHITE);
-        display.drawFastVLine(13, 12, 5, WHITE);
-        display.drawFastVLine(16, 11, 7, WHITE);
-        menuData.updateValue(Menu::IP, " Connecting");
-        display.display();
-      })
-
-      .onDisable([] ( int idx, int v, int up ) {
-        display.drawLine(9, 17, 17, 11, WHITE);
-        display.display();
-      })
-
-      .toggle();
+    logger.start();
 
 
   toggleLogging.begin(9)
     .onPress(logger, logger.EVT_TOGGLE);
-  toggleWiFi.begin(6)
-    .onPress(wifi, wifi.EVT_TOGGLE);
+  toggleWiFi.begin(6);
+    //.onPress(wifi, wifi.EVT_TOGGLE);
   infoBtn.begin(5)
     .onPress(menu, menu.EVT_STEP);
 
